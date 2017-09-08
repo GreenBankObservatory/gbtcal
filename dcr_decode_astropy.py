@@ -31,20 +31,26 @@ def eprint(string):
     print("ERROR: {}".format(string), file=sys.stderr)
 
 
+       
+
 def getFitsForScan(projPath, scanNum):
     """Given a project path and a scan number, return the a dict mapping
     manager name to the manager's FITS file (as an HDUList) for that scan"""
 
     # Try to open the scan log fits file
     scanLog = fits.getdata(os.path.join(projPath, "ScanLog.fits"))
+
     # Data for the given scan number
     scanInfo = scanLog[scanLog['SCAN'] == scanNum]
     managerFitsMap = {}
     for filePath in scanInfo['FILEPATH']:
         if "SCAN" not in filePath:
             _, _, manager, scanName = filePath.split("/")
-            fitsPath = os.path.join(projPath, manager, scanName)
-            managerFitsMap[manager] = fits.open(fitsPath)
+            # we actually only care about these - no point in raising an error
+            # if something like the GO FITS file can't be found.
+            if manager in ['DCR', 'IF']:
+                fitsPath = os.path.join(projPath, manager, scanName)
+                managerFitsMap[manager] = fits.open(fitsPath)
 
     return managerFitsMap
 
@@ -196,12 +202,14 @@ def consolidateFitsData(dcrHdu, ifHdu):
 
     # TODO: What is the proper way to find all combinations of these two lists?
     stuff = []
-    print("filteredIfTable:")
-    print(filteredIfTable['RECEIVER', 'FEED', 'POLARIZE', 'PORT', 'SIGREF', 'CAL'])
-    print("phaseStateTable:")
-    print(phaseStateTable)
 
-    assert len(uniquePorts) == dcrDataTable['DATA'].shape[1]
+    # This is a reasonable assert to make, but it will fail when the IF FITS
+    # only has a *subset* of the ports used by the DCR.  Sparrow ignores ports
+    # NOT specified by the IF FITS file, wo we'll do the same
+    #assert len(uniquePorts) == dcrDataTable['DATA'].shape[1]
+    if len(uniquePorts) != dcrDataTable['DATA'].shape[1]:
+        print("WARNING: IF ports are only a subset of DCR ports used")
+
 
     reshapedData = dcrDataTable['DATA'].reshape(len(dcrDataTable),
                                             len(uniquePorts),
@@ -509,3 +517,4 @@ if __name__ == '__main__':
     args = parseArgs()
     # Call processDcrData with all CLI args
     processDcrData(**args.__dict__)
+
