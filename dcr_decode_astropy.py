@@ -24,14 +24,30 @@ import numpy as np
 # in numpy and astropy for dealing with FITS files in a sensible manner.
 ###
 
+# All valid receivers that use DCR data
+RCVRS = [
+    'RcvrPF_1',
+    'RcvrPF_2',
+    'RcvrArray1_2',
+    'Rcvr1_2',
+    'Rcvr2_3',
+    'Rcvr4_6',
+    'Rcvr8_10',
+    'Rcvr12_18',
+    'RcvrArray18_26',
+    'Rcvr18_26',
+    'Rcvr26_40',
+    'Rcvr40_52',
+    'Rcvr69_92',
+    'RcvrArray75_115'
+]
+
 
 def eprint(string):
     """Given a string, prepend ERROR to it and print it to stderr"""
 
     print("ERROR: {}".format(string), file=sys.stderr)
 
-
-       
 
 def getFitsForScan(projPath, scanNum):
     """Given a project path and a scan number, return the a dict mapping
@@ -48,7 +64,7 @@ def getFitsForScan(projPath, scanNum):
             _, _, manager, scanName = filePath.split("/")
             # we actually only care about these - no point in raising an error
             # if something like the GO FITS file can't be found.
-            if manager in ['DCR', 'IF']:
+            if manager in ['DCR', 'IF'] or manager in RCVRS:
                 fitsPath = os.path.join(projPath, manager, scanName)
                 managerFitsMap[manager] = fits.open(fitsPath)
 
@@ -329,7 +345,9 @@ def getTcal(rcvrCalTable, feed, receptor, polarization, highCal,
     calTemps = highCalTemps if highCal else lowCalTemps
     frequencies = maskedTable['FREQUENCY']
 
-    return getHistogramArea(freqStart, freqEnd, frequencies, calTemps)
+    area = getHistogramArea(freqStart, freqEnd, frequencies, calTemps)
+
+    return area / abs(freqEnd - freqStart)
 
 
 def calibrateTotalPower(calOnData, calOffData, feed, receptor, polarization,
@@ -497,7 +515,7 @@ def processDcrData(projPath, scanNum, receiver, polarization):
     # print(result)
     # print("-" * 80)
     return result
-
+    
     rcvrCalHduList = fitsForScan[receiver]
     rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
 
@@ -512,9 +530,17 @@ def processDcrData(projPath, scanNum, receiver, polarization):
     # paulDcrDecode.plotData(power, scanName, receiver,
     #                        projPath, polarization)
 
-
+def calibrateDefaultDcrData(projPath, scanNum, receiver, polarization):
+    "Returns the default (total power, or dual beam) calibration"
+    fitsForScan = getFitsForScan(projPath, scanNum)
+    result = consolidateFitsData(fitsForScan['DCR'], fitsForScan['IF'])
+    rcvrCalHduList = fitsForScan[receiver]
+    rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
+    power = calibrateMultiFeed(result, polarization, rcvrCalTable)
+    return power
+    
 if __name__ == '__main__':
     args = parseArgs()
     # Call processDcrData with all CLI args
-    processDcrData(**args.__dict__)
+    calibrateDefaultDcrData(**args.__dict__)
 
