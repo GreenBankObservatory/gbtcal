@@ -64,7 +64,7 @@ def getFitsForScan(projPath, scanNum):
             _, _, manager, scanName = filePath.split("/")
             # we actually only care about these - no point in raising an error
             # if something like the GO FITS file can't be found.
-            if manager in ['DCR', 'IF'] or manager in RCVRS:
+            if manager in ['DCR', 'IF', 'Antenna'] or manager in RCVRS:
                 fitsPath = os.path.join(projPath, manager, scanName)
                 managerFitsMap[manager] = fits.open(fitsPath)
 
@@ -235,8 +235,8 @@ def consolidateFitsData(dcrHdu, ifHdu):
         eprint("Invalid shape? These should be equal: len(uniquePorts): {}; reshapedData.shape[1]: {}"
                .format(len(uniquePorts), reshapedData.shape[1]))
 
-    print("Reshaped from {} to {}".format(dcrDataTable['DATA'].shape,
-                                          reshapedData.shape))
+    # print("Reshaped from {} to {}".format(dcrDataTable['DATA'].shape,
+                                          # reshapedData.shape))
 
     # TODO: I wonder if there is a way to avoid looping here altogether?
     for portIndex, port in enumerate([port + 1 for port in uniquePorts]):
@@ -360,7 +360,7 @@ def calibrateTotalPower(calOnData, calOffData, feed, receptor, polarization,
     return power
 
 
-def calibrateMultiFeed(dataTable, polarization, rcvrCalTable):
+def calibrateMultiFeed(dataTable, polarization, rcvrCalTable, trackBeam=None):
     """Given a data table (which supplies all required data) and a
     polarization to calibrate for, return the calibrated data"""
 
@@ -392,6 +392,13 @@ def calibrateMultiFeed(dataTable, polarization, rcvrCalTable):
         calOnMask = maskedData['CAL'] == 1
         calOffMask = maskedData['CAL'] == 0
 
+        # we can't calibrate nothing if we have only one phase,
+        # at least for typical receivers
+        calValues = len(np.unique(maskedData['CAL']))
+        if calValues < 2:
+            print("Not enough phases, not calibrating!")
+            return None
+
         calOnData = maskedData[calOnMask]['DATA'].flatten()
         calOffData = maskedData[calOffMask]['DATA'].flatten()
 
@@ -418,7 +425,22 @@ def calibrateMultiFeed(dataTable, polarization, rcvrCalTable):
         # TODO: I would have thought these would map the other way around...
         refFeed = dataTable['SRFEED1'][0]
         sigFeed = dataTable['SRFEED2'][0]
-        return mapFeedToData[sigFeed] - mapFeedToData[refFeed]
+
+        # the beam difference depends on which is the tracking beam
+        # print("trackBeam: ", trackBeam, type(trackBeam), sigFeed, type(sigFeed))
+        if trackBeam is None:
+            # well, crap, just choose one
+            sig = sigFeed
+            ref = refFeed
+        else:
+            if sigFeed == trackBeam:
+                sig = sigFeed
+                ref = refFeed
+            else:
+                sig = refFeed
+                ref = sigFeed
+        # return mapFeedToData[sigFeed] - mapFeedToData[refFeed]
+        return mapFeedToData[sig] - mapFeedToData[ref]
     else:
         raise TypeError("Receivers with >2 feeds are not "
                         "supported (got: {} feeds)".format(numFeeds))
@@ -536,11 +558,58 @@ def calibrateDefaultDcrData(projPath, scanNum, receiver, polarization):
     result = consolidateFitsData(fitsForScan['DCR'], fitsForScan['IF'])
     rcvrCalHduList = fitsForScan[receiver]
     rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
-    power = calibrateMultiFeed(result, polarization, rcvrCalTable)
+    trackBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
+    power = calibrateMultiFeed(result, polarization, rcvrCalTable, trackBeam=trackBeam)
     return power
-    
+
+
+def calibrateDefaultDcrPolarizations(projPath, scanNum, receiver):
+    "Returns the default (total power, or dual beam) calib. for all pols"
+
+    # decode the dcr data first
+    fitsForScan = getFitsForScan(projPath, scanNum)
+    data = consolidateFitsData(fitsForScan['DCR'], fitsForScan['IF'])
+
+    # now construct a dict of calibrated results using the same keys
+    # that we constructed for the sparrow data
+    pols = [p.strip() for p in list(set(list(data['POLARIZE'])))]
+    dataMap = {}
+    polMap = {
+        'X': 'XL',
+        'L': 'XL',
+        'Y': 'YR',
+        'R': 'YR',
+    }
+    numFeeds = len(np.unique(data['FEED']))
+    mode = 'TotalPower' if numFeeds == 1 else 'DualBeam'
+    # calibrate each of the polarizations
+    for pol in pols:
+        polKey = polMap[pol]
+
+        power = calibrateDefaultDcrData(projPath,
+                                        scanNum,
+                                        receiver,
+                                        pol)
+        if power is not None:
+            dataMap[(mode, polKey)] = power
+
+    # then calibrate the average
+    if len(pols) > 1:
+        pol1 = (mode, polMap[pols[0]])
+        pol2 = (mode, polMap[pols[1]])
+        if pol1 in dataMap and pol2 in dataMap:
+            dataMap[(mode, 'Avg')] = (dataMap[pol1] + dataMap[pol2]) / 2.0
+
+    # for k, v in dataMap.items():
+        # print(k, v[0])
+
+    return dataMap
+
+
 if __name__ == '__main__':
     args = parseArgs()
+    projPath = vars(args)['projPath']
+    scanNum = vars(args)['scanNum']
+    receiver = vars(args)['receiver']
     # Call processDcrData with all CLI args
-    calibrateDefaultDcrData(**args.__dict__)
-
+    calibrateDefaultDcrPolarizations(projPath, scanNum, receiver)
