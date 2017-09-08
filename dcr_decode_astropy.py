@@ -580,6 +580,14 @@ def getDcrDataMap(projPath, scanNum):
     fitsForScan = getFitsForScan(projPath, scanNum)
     data = consolidateFitsData(fitsForScan['DCR'], fitsForScan['IF'])
 
+    # what rcvr is observing?
+    devices = set(fitsForScan.keys())
+    receiver = list(devices.intersection(set(RCVRS)))[0]
+    print("receiver", receiver)
+    # get the rcvr cal table
+    rcvrCalHduList = fitsForScan[receiver]
+    rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
+
     a = getDcrDataAttributes(data)
     print(a)
 
@@ -587,12 +595,27 @@ def getDcrDataMap(projPath, scanNum):
     for feed in a['feeds']:
         for pol in a['polarizations']:
             for freq in a['frequencies']:
+
+                # gather the rx cal info while we're at it
+                mask = ((data['FEED'] == feed) &
+                        (np.char.rstrip(data['POLARIZE']) == pol))
+                maskedData = data[mask]
+                receptor = np.char.rstrip(maskedData['RECEPTOR'])[0]
+                centerSkyFreq = maskedData['CENTER_SKY'][0]
+                bandwidth = maskedData['BANDWDTH'][0]
+                highCal = maskedData['HIGH_CAL'][0]
+                tCal = getTcal(rcvrCalTable, feed, receptor, pol,
+                               highCal, centerSkyFreq, bandwidth)
+
                 for phase in a['phases']:
                     key = (feed, pol, freq, phase)
-                    dataMap[key] = getRawData(data, feed, pol, freq, phase)
+                    rawData = getRawData(data, feed, pol, freq, phase)
+                    dataMap[key] = (rawData, tCal)
 
     return dataMap
 
+    tCal = getTcal(rcvrCalTable, feed, receptor, polarization,
+                   highCal, centerSkyFreq, bandwidth)
 
 def getRawData(data, feed, pol, freq, phase):
     "Given the table, find the specific data as specified by given attributes"
