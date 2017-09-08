@@ -522,13 +522,104 @@ def parseArgs():
     return parser.parse_args()
 
 
+def phaseNameToSigCalStates(phase):
+    "Convert GFM-style phase name to indicies to use w/ data"
+    sigRefState, calState = [i.strip() for i in phase.split('/')]
+    if sigRefState == 'Signal':
+        sigRefState = 0
+    elif sigRefState == 'Reference':
+        sigRefState = 1
+    else:
+        raise ValueError("Unsupported SIGREF value '{}' "
+                         "derived from phase '{}'"
+                         .format(sigRefState, phase))
+
+    if calState == 'Cal':
+        calState = 1
+    elif calState == 'No Cal':
+        calState = 0
+    else:
+        raise ValueError("Unsupported calState value '{}' "
+                         "derived from phase '{}'"
+                         .format(calState, phase))
+    return (sigRefState, calState)
+
+
+def sigCalStateToPhaseName(sigRefState, calState):
+    "Map sigref and cal indicies in data to a GFM-style phase name"
+    name1 = "Signal" if sigRefState == 0 else "Reference"
+    name2 = "Cal" if calState == 1 else "No Cal"
+    return "%s / %s" % (name1, name2)
+
+
+def getDcrDataAttributes(data):
+    "Returns lists of the feed, polarizations, frequencies, and phases"
+
+    pols = [p.strip() for p in list(np.unique(data['POLARIZE']))]
+    feeds = list(np.unique(data['FEED']))
+    freqs = list(np.unique(data['CENTER_SKY']))
+    # phases = list(np.unique(data['PHASE']))
+    sigrefs = list(np.unique(data['SIGREF']))
+    cals = list(np.unique(data['CAL']))
+    phaseNames = []
+    for sigref in sigrefs:
+        for cal in cals:
+            phaseNames.append(sigCalStateToPhaseName(sigref, cal))
+
+    return {
+        'polarizations': pols,
+        'feeds': feeds,
+        'frequencies': freqs,
+        'phases': phaseNames
+    }
+
+
+def getDcrDataMap(projPath, scanNum):
+    "Returns a dict for mapping physical attributes to actual data"
+
+    fitsForScan = getFitsForScan(projPath, scanNum)
+    data = consolidateFitsData(fitsForScan['DCR'], fitsForScan['IF'])
+
+    a = getDcrDataAttributes(data)
+    print(a)
+
+    dataMap = {}
+    for feed in a['feeds']:
+        for pol in a['polarizations']:
+            for freq in a['frequencies']:
+                for phase in a['phases']:
+                    key = (feed, pol, freq, phase)
+                    dataMap[key] = getRawData(data, feed, pol, freq, phase)
+
+    return dataMap
+
+
+def getRawData(data, feed, pol, freq, phase):
+    "Given the table, find the specific data as specified by given attributes"
+
+    sigRefState, calState = phaseNameToSigCalStates(phase)
+
+    mask = (
+        (data['FEED'] == int(feed)) &
+        (np.char.rstrip(data['POLARIZE']) == pol) &
+        (data['CENTER_SKY'] == float(freq)) &
+        (data['SIGREF'] == sigRefState) &
+        (data['CAL'] == calState)
+    )
+
+    # print("our mask: ", mask, sigRefState, calState)
+    # print("data: ", result[mask]['DATA'].data, value[0])
+
+    return data[mask]['DATA'].data[0]
+
+
 def processDcrData(projPath, scanNum, receiver, polarization):
     # A mapping of Manager -> FITS file for given scan
     fitsForScan = getFitsForScan(projPath, scanNum)
     # if receiver not in fitsForScan.keys():
     #     raise ValueError("Given receiver '{}' took no data during scan {}!"
     #                      .format(receiver, scanNum))
-    scanName = os.path.basename(fitsForScan['IF'].filename())
+    # scanName = os.path.basename(fitsForScan['IF'].filename())
     # print("Scan Name: {}".format(scanName))
 
     result = consolidateFitsData(fitsForScan['DCR'], fitsForScan['IF'])
@@ -612,4 +703,8 @@ if __name__ == '__main__':
     scanNum = vars(args)['scanNum']
     receiver = vars(args)['receiver']
     # Call processDcrData with all CLI args
-    calibrateDefaultDcrPolarizations(projPath, scanNum, receiver)
+    #calibrateDefaultDcrPolarizations(projPath, scanNum, receiver)
+    m = getDcrDataMap(projPath, scanNum)
+    for k, v in m.items():
+        print(k, v[0])
+
