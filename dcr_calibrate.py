@@ -1,10 +1,16 @@
-
+import os
 import numpy as np
 
 from dcr_decode_astropy import getDcrDataMap
 
 
 def getSupportedModes(dataKeys):
+    """
+    Given the physical attributes of our data, what are 
+    the subset of modes supported?
+    """
+
+    # Raw should always be supported
     modes = ['Raw']
 
     phases = list(set([k[3] for k in dataKeys]))
@@ -12,6 +18,7 @@ def getSupportedModes(dataKeys):
 
     # we need more then one phase to do total Power
     if numPhases <= 1:
+        # all we support is Raw then
         return modes
     else:
         modes.append('TotalPower')
@@ -29,8 +36,16 @@ def getSupportedModes(dataKeys):
 
 
 def calibrateDcrData(projPath, scanNum, mode=None, polarization=None):
+    """"
+    Calibrate the DCR Data from the given project path and scan
+    using either the given calibration mode and polarization, or 
+    the defaults
+    """
 
-    data = getDcrDataMap(projPath, scanNum)
+    dataMap = getDcrDataMap(projPath, scanNum)
+
+    data = dataMap['data']
+    trackBeam = dataMap['trackBeam']
 
     modes = getSupportedModes(data.keys())
 
@@ -54,9 +69,6 @@ def calibrateDcrData(projPath, scanNum, mode=None, polarization=None):
         # TBD: map 'XL' to 'X' or 'L'
         pass
 
-    # TBF:
-    trackBeam = 1
-
     return calibrate(data, mode, polarization, trackBeam)
 
 
@@ -67,6 +79,7 @@ def getPolKey(pol):
         'L': 'XL',
         'Y': 'YR',
         'R': 'YR',
+        'Avg': 'Avg'
     }
     return pmap[pol]
 
@@ -90,15 +103,31 @@ def calibrateTotalPower(data, feed, pol, freq):
     return getAntennaTemperature(on, off, tcal)
 
 
-def calibrateDualBeam(feedTotalPowers, trackBeam):
+def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
+    "Here we're just finding the difference between the two beams"
 
-    if trackBeam == 1:
-        return feedTotalPowers[1] - feedTotalPowers[2]
+    assert len(feeds) == 2
+    if trackBeam == feeds[0]:
+        sig = feeds[0]
+        ref = feeds[1]
     else:
-        return feedTotalPowers[2] - feedTotalPowers[1]
+        sig = feeds[1]
+        ref = feeds[2]
+
+    return feedTotalPowers[sig] - feedTotalPowers[ref]
+
+
+def getRawPower(data, feed, pol, freq):
+    "Simply get the raw power, for the right phase"
+    phases = list(set([k[3] for k in data.keys()]))
+    phase = 'Signal / No Cal' if len(phases) > 1 else phases[0]
+    key = (feed, pol, freq, phase)
+    raw, tcal = data[key]
+    return raw
 
 
 def calibrate(data, mode, polarization, trackBeam):
+    "Given the decoded DCR data, calibrate it for the given mode and pol"
     print("calibrating with", mode, polarization)
 
     # TBD: always just use the first freq?
@@ -118,6 +147,18 @@ def calibrate(data, mode, polarization, trackBeam):
         # don't waste time on more then one feed unless u need to
         feeds = [feeds[0]]
 
+    # if raw mode, couldn't be simpler
+    if mode == 'Raw':
+        # feed = feeds[0]
+        # handles both single pol, or average
+        polPowers = []
+        for pol in pols:
+            rawPol = getRawPower(data, trackBeam, pol, freq)
+            polPowers.append(rawPol)
+        # we're done
+        return sum(polPowers) / float(len(pols))
+
+    # collect total powers from each feed
     totals = {}
     for feed in feeds:
         # make this general for both a single pol, and averaging
@@ -130,12 +171,41 @@ def calibrate(data, mode, polarization, trackBeam):
     if mode != 'DualBeam' or len(feeds) < 2:
         return totals[feed]
     else:
-        return calibrateDualBeam(totals, trackBeam)
+        return calibrateDualBeam(totals, trackBeam, feeds)
+
+
+def calibrateAll(projPath, scanNum):
+    "Returns a dict of all the possible calibrated data products"
+
+    dataMap = getDcrDataMap(projPath, scanNum)
+
+    data = dataMap['data']
+    trackBeam = dataMap['trackBeam']
+
+    # print("**** data map summary")
+    # keys = sorted(data.keys())
+    # for k in keys:
+    #     print(k, data[k][0][0])
+    # print("trackBeam: ", trackBeam)
+
+    modes = getSupportedModes(data.keys())
+
+    pols = list(set([k[1] for k in data.keys()]))
+    pols.append('Avg')
+
+    cal = {}
+    for mode in modes:
+        for pol in pols:
+            calData = calibrate(data, mode, pol, trackBeam)
+            key = (mode, getPolKey(pol))
+            cal[key] = list(calData)
+
+    return cal
 
 
 if __name__ == '__main__':
     import sys
     projPath = sys.argv[1]
     scanNum = int(sys.argv[2])
-    x = calibrateDcrData(projPath, scanNum)
-    print("result: ", x)
+    x = calibrateAll(projPath, scanNum)
+    print("result: ", x.keys())
