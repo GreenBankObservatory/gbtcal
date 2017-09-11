@@ -112,7 +112,7 @@ def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
         ref = feeds[1]
     else:
         sig = feeds[1]
-        ref = feeds[2]
+        ref = feeds[0]
 
     return feedTotalPowers[sig] - feedTotalPowers[ref]
 
@@ -145,7 +145,7 @@ def calibrate(data, mode, polarization, trackBeam):
     feeds = list(set([k[0] for k in data.keys()]))
     if mode != 'DualBeam':
         # don't waste time on more then one feed unless u need to
-        feeds = [feeds[0]]
+        feeds = [trackBeam]
 
     # if raw mode, couldn't be simpler
     if mode == 'Raw':
@@ -181,24 +181,39 @@ def calibrateAll(projPath, scanNum):
 
     data = dataMap['data']
     trackBeam = dataMap['trackBeam']
+    rcvr = dataMap['receiver']
 
-    # print("**** data map summary")
-    # keys = sorted(data.keys())
-    # for k in keys:
-    #     print(k, data[k][0][0])
-    # print("trackBeam: ", trackBeam)
+    print("**** data map summary for", rcvr)
+    keys = sorted(data.keys())
+    for k in keys:
+        print(k, data[k][0][0], data[k][1])
+    print("trackBeam: ", trackBeam)
 
     modes = getSupportedModes(data.keys())
 
     pols = list(set([k[1] for k in data.keys()]))
     pols.append('Avg')
 
-    cal = {}
+    # construct the options of mode and pols
+    calTypes = []
     for mode in modes:
         for pol in pols:
-            calData = calibrate(data, mode, pol, trackBeam)
-            key = (mode, getPolKey(pol))
-            cal[key] = list(calData)
+            calTypes.append((mode, pol))
+
+    if rcvr == "Rcvr26_40":
+        # Ka rcvr only suppports feeds, pols: (1, R), (2, L)
+        # so we can't do all the same cal types as everyone else
+        kaPolMap = {1: 'R', 2: 'L'}
+        calTypes = [
+            ('Raw', kaPolMap[trackBeam]),
+            ('TotalPower', kaPolMap[trackBeam])
+        ]
+
+    cal = {}
+    for mode, pol in calTypes:
+        calData = calibrate(data, mode, pol, trackBeam)
+        key = (mode, getPolKey(pol))
+        cal[key] = list(calData)
 
     return cal
 
