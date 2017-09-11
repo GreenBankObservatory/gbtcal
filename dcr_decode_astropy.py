@@ -38,7 +38,7 @@ RCVRS = [
     'Rcvr18_26',
     'Rcvr26_40',
     'Rcvr40_52',
-    'Rcvr69_92',
+    'Rcvr68_92',
     'RcvrArray75_115'
 ]
 
@@ -575,14 +575,26 @@ def getDcrDataAttributes(data):
 
 
 def getDcrDataMap(projPath, scanNum):
-    "Returns a dict for mapping physical attributes to actual data"
+    """
+    Returns a dict for mapping physical attributes to actual data
+    along with additional info needed for calibration
+    """
 
     fitsForScan = getFitsForScan(projPath, scanNum)
     data = consolidateFitsData(fitsForScan['DCR'], fitsForScan['IF'])
 
+    # if we latter calibrate via dual beam, we need to know this
+    trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
+
     # what rcvr is observing?
     devices = set(fitsForScan.keys())
-    receiver = list(devices.intersection(set(RCVRS)))[0]
+    # receiver = list(devices.intersection(set(RCVRS)))[0]
+    rcvrs = list(devices.intersection(set(RCVRS)))
+    if len(rcvrs) == 0:
+        print("Receiver not found in devices: ", devices)
+        return {}
+
+    receiver = rcvrs[0]
     print("receiver", receiver)
     # get the rcvr cal table
     rcvrCalHduList = fitsForScan[receiver]
@@ -612,10 +624,8 @@ def getDcrDataMap(projPath, scanNum):
                     rawData = getRawData(data, feed, pol, freq, phase)
                     dataMap[key] = (rawData, tCal)
 
-    return dataMap
+    return {'data': dataMap, 'trackBeam': trckBeam}
 
-    tCal = getTcal(rcvrCalTable, feed, receptor, polarization,
-                   highCal, centerSkyFreq, bandwidth)
 
 def getRawData(data, feed, pol, freq, phase):
     "Given the table, find the specific data as specified by given attributes"
