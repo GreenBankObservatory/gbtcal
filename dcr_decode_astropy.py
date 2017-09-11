@@ -38,7 +38,7 @@ RCVRS = [
     'Rcvr18_26',
     'Rcvr26_40',
     'Rcvr40_52',
-    'Rcvr68_92',
+    'Rcvr69_92',
     'RcvrArray75_115'
 ]
 
@@ -593,9 +593,9 @@ def getDcrDataMap(projPath, scanNum):
     if len(rcvrs) == 0:
         print("Receiver not found in devices: ", devices)
         return {}
-
     receiver = rcvrs[0]
     print("receiver", receiver)
+
     # get the rcvr cal table
     rcvrCalHduList = fitsForScan[receiver]
     rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
@@ -606,6 +606,13 @@ def getDcrDataMap(projPath, scanNum):
     dataMap = {}
     for feed in a['feeds']:
         for pol in a['polarizations']:
+
+            if receiver == "Rcvr26_40":
+                # this receiver only handles certain pol-feed combos
+                if (feed == 1 and pol == 'L') or (feed == 2 and pol == 'R'):
+                    print("Skipping unhandled Rcvr26_40 configuration")
+                    continue
+
             for freq in a['frequencies']:
 
                 # gather the rx cal info while we're at it
@@ -624,7 +631,7 @@ def getDcrDataMap(projPath, scanNum):
                     rawData = getRawData(data, feed, pol, freq, phase)
                     dataMap[key] = (rawData, tCal)
 
-    return {'data': dataMap, 'trackBeam': trckBeam}
+    return {'data': dataMap, 'trackBeam': trckBeam, 'receiver': receiver}
 
 
 def getRawData(data, feed, pol, freq, phase):
