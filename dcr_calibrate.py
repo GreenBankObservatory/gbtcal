@@ -119,6 +119,7 @@ def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
 
 def getRawPower(data, feed, pol, freq):
     "Simply get the raw power, for the right phase"
+    print("getRawPower", feed, pol, freq)
     phases = list(set([k[3] for k in data.keys()]))
     phase = 'Signal / No Cal' if len(phases) > 1 else phases[0]
     key = (feed, pol, freq, phase)
@@ -126,13 +127,19 @@ def getRawPower(data, feed, pol, freq):
     return raw
 
 
+def getFreqForData(data, feed, pol):
+    "Get the first data's frequency that has the given feed and polarization"
+    keys = data.keys()
+    # import ipdb; ipdb.set_trace()
+    for f, p, freq, _ in keys:
+        if f == feed and p == pol:
+            return freq
+    return None
+
+
 def calibrate(data, mode, polarization, trackBeam):
     "Given the decoded DCR data, calibrate it for the given mode and pol"
     print("calibrating with", mode, polarization)
-
-    # TBD: always just use the first freq?
-    allFreqs = list(set([k[2] for k in data.keys()]))
-    freq = allFreqs[0]
 
     # handle single pols, or averages
     allPols = list(set([k[1] for k in data.keys()]))
@@ -141,10 +148,18 @@ def calibrate(data, mode, polarization, trackBeam):
     else:
         pols = [polarization]
 
-    # get total power for each beam that we need to
     feeds = list(set([k[0] for k in data.keys()]))
+    if trackBeam not in feeds:
+        # TrackBeam must be wrong?
+        # WTF!  How to know which feed to use for raw & tp?
+        # we've experimented and shown that there's no happy ending here.
+        # so just bail.
+        return None
+
+
+    # get total power for each beam that we need to
     if mode != 'DualBeam':
-        # don't waste time on more then one feed unless u need to
+        # # don't waste time on more then one feed unless u need to
         feeds = [trackBeam]
 
     # if raw mode, couldn't be simpler
@@ -153,6 +168,7 @@ def calibrate(data, mode, polarization, trackBeam):
         # handles both single pol, or average
         polPowers = []
         for pol in pols:
+            freq = getFreqForData(data, trackBeam, pol)
             rawPol = getRawPower(data, trackBeam, pol, freq)
             polPowers.append(rawPol)
         # we're done
@@ -164,6 +180,7 @@ def calibrate(data, mode, polarization, trackBeam):
         # make this general for both a single pol, and averaging
         polPowers = []
         for pol in pols:
+            freq = getFreqForData(data, feed, pol)
             totalPowerPol = calibrateTotalPower(data, feed, pol, freq)
             polPowers.append(totalPowerPol)
         totals[feed] = sum(polPowers) / float(len(pols))
@@ -188,6 +205,11 @@ def calibrateAll(projPath, scanNum):
     for k in keys:
         print(k, data[k][0][0], data[k][1])
     print("trackBeam: ", trackBeam)
+
+    feeds = list(set([k[0] for k in data.keys()]))
+    if trackBeam not in feeds:
+        print("trackBeam not in Feeds!  Cant proces")
+        return {}
 
     modes = getSupportedModes(data.keys())
 
