@@ -553,7 +553,7 @@ def sigCalStateToPhaseName(sigRefState, calState):
 
 
 def getDcrDataAttributes(data):
-    "Returns lists of the feed, polarizations, frequencies, and phases"
+    "Returns dict of lists of the feed, polarizations, frequencies, and phases"
 
     pols = [p.strip() for p in list(np.unique(data['POLARIZE']))]
     feeds = list(np.unique(data['FEED']))
@@ -561,6 +561,7 @@ def getDcrDataAttributes(data):
     # phases = list(np.unique(data['PHASE']))
     sigrefs = list(np.unique(data['SIGREF']))
     cals = list(np.unique(data['CAL']))
+
     phaseNames = []
     for sigref in sigrefs:
         for cal in cals:
@@ -572,6 +573,26 @@ def getDcrDataAttributes(data):
         'frequencies': freqs,
         'phases': phaseNames
     }
+
+
+def getDcrDataDescriptors(data):
+    "Returns description as a list of (feed, pol, freq, phase)"
+
+    columns = ['FEED', 'POLARIZE', 'CENTER_SKY', 'SIGREF', 'CAL']
+    desc = data[columns]
+
+    row = list(desc)[0]
+
+    # convert this astropy table to a simple list
+    descriptors = [d.as_void() for d in list(desc)]
+
+    # finally, do a little formatting and translation
+    ds = []
+    for feed, pol, freq, sigref, cal in descriptors:
+        pol = pol.strip()
+        phase = sigCalStateToPhaseName(sigref, cal)
+        ds.append((feed, pol, freq, phase))
+    return ds
 
 
 def getDcrDataMap(projPath, scanNum):
@@ -600,42 +621,50 @@ def getDcrDataMap(projPath, scanNum):
     rcvrCalHduList = fitsForScan[receiver]
     rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
 
+    # retrieve the abbreviated list of attributes
     a = getDcrDataAttributes(data)
     print(a)
 
+    # retrieve the list of how these attributes combine
+    descs = getDcrDataDescriptors(data)
+    tCals = {}
     dataMap = {}
-    for feed in a['feeds']:
-        for pol in a['polarizations']:
 
-            if receiver == "Rcvr26_40":
-                # this receiver only handles certain pol-feed combos
-                if (feed == 1 and pol == 'L') or (feed == 2 and pol == 'R'):
-                    print("Skipping unhandled Rcvr26_40 configuration")
-                    continue
+    # now we can actually construct our map
+    for feed, pol, freq, phase in descs:
 
-            for freq in a['frequencies']:
+        # gather the rx cal info while we're at it
+        mask = ((data['FEED'] == feed) &
+                (np.char.rstrip(data['POLARIZE']) == pol))
+        maskedData = data[mask]
+        receptor = np.char.rstrip(maskedData['RECEPTOR'])[0]
+        centerSkyFreq = maskedData['CENTER_SKY'][0]
+        bandwidth = maskedData['BANDWDTH'][0]
+        highCal = maskedData['HIGH_CAL'][0]
 
-                # gather the rx cal info while we're at it
-                mask = ((data['FEED'] == feed) &
-                        (np.char.rstrip(data['POLARIZE']) == pol))
-                maskedData = data[mask]
-                receptor = np.char.rstrip(maskedData['RECEPTOR'])[0]
-                centerSkyFreq = maskedData['CENTER_SKY'][0]
-                bandwidth = maskedData['BANDWDTH'][0]
-                highCal = maskedData['HIGH_CAL'][0]
-                tCal = getTcal(rcvrCalTable, feed, receptor, pol,
-                               highCal, centerSkyFreq, bandwidth)
+        # maintain a cache to avoid repeating calls to getTcal
+        tCalKey = (feed, pol, receptor, highCal, centerSkyFreq, bandwidth)
+        if tCalKey in tCals:
+            tCal = tCals[tCalKey]
+        else:
+            tCal = getTcal(rcvrCalTable, feed, receptor, pol,
+                           highCal, centerSkyFreq, bandwidth)
+            tCals[tCalKey] = tCal
 
-                for phase in a['phases']:
-                    key = (feed, pol, freq, phase)
-                    rawData = getRawData(data, feed, pol, freq, phase)
-                    dataMap[key] = (rawData, tCal)
+        # gather the actual data
+        rawData = getRawData(data, feed, pol, freq, phase)
+        key = (feed, pol, freq, phase)
 
+        dataMap[key] = (rawData, tCal)
+
+    # include additional info to the final map
     return {'data': dataMap, 'trackBeam': trckBeam, 'receiver': receiver}
 
 
 def getRawData(data, feed, pol, freq, phase):
     "Given the table, find the specific data as specified by given attributes"
+
+    print("getRawData for: ", feed, pol, freq, phase)
 
     sigRefState, calState = phaseNameToSigCalStates(phase)
 
