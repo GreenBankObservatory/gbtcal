@@ -4,7 +4,7 @@ import numpy as np
 from dcr_decode_astropy import getDcrDataMap
 
 
-def getSupportedModes(dataKeys):
+def getSupportedModes(data):
     """
     Given the physical attributes of our data, what are 
     the subset of modes supported?
@@ -13,7 +13,7 @@ def getSupportedModes(dataKeys):
     # Raw should always be supported
     modes = ['Raw']
 
-    phases = list(set([k[3] for k in dataKeys]))
+    phases = np.unique(data['CAL', 'SIGREF'])
     numPhases = len(phases)
 
     # we need more then one phase to do total Power
@@ -23,7 +23,7 @@ def getSupportedModes(dataKeys):
     else:
         modes.append('TotalPower')
 
-    feeds = list(set([k[0] for k in dataKeys]))
+    feeds = np.unique(data['FEED'])
     numFeeds = len(feeds)
 
     # we need more then one feed for dual beam
@@ -47,7 +47,7 @@ def calibrateDcrData(projPath, scanNum, mode=None, polarization=None):
     data = dataMap['data']
     trackBeam = dataMap['trackBeam']
 
-    modes = getSupportedModes(data.keys())
+    modes = getSupportedModes(data)
 
     if mode is not None and mode not in modes:
         raise ValueError("Mode %s not supported" % mode)
@@ -93,14 +93,47 @@ def getAntennaTemperature(calOnData, calOffData, tCal):
 
 def calibrateTotalPower(data, feed, pol, freq):
 
-    # TBF: handle sigref = 1
-    onKey = (feed, pol, freq, 'Signal / Cal')
-    offKey = (feed, pol, freq, 'Signal / No Cal')
+    # NOTE: This is AGNOSTIC to SIGREF. That is, it cares only about CAL
 
-    on, tcal = data[onKey]
-    off, tcal = data[offKey]
-    print("tcal", tcal)
-    return getAntennaTemperature(on, off, tcal)
+    mask = (
+        (data['FEED'] == feed) &
+        (np.char.rstrip(data['POLARIZE']) == pol) &
+        (data['CENTER_SKY'] == freq)
+        # TODO: Not sure if this should be here or not...
+        # (data['SIGREF'] == 0)
+    )
+
+    dataToCalibrate = data[mask]
+    onMask = dataToCalibrate['CAL'] == 1
+    offMask = dataToCalibrate['CAL'] == 0
+
+    onRow = dataToCalibrate[onMask]
+    offRow = dataToCalibrate[offMask]
+
+    if len(onRow) != 1 or len(offRow) != 1:
+        raise ValueError("Must be exactly one row each for "
+                         "'on' and 'off' data")
+
+    if onRow['TCAL'] != offRow['TCAL']:
+        raise ValueError("TCAL of 'on' and 'off' data must be identical")
+
+    # TODO: This is probably a bug in the decode code...
+    # This is an array of a single array, so we extract the inner array
+    onData = onRow['DATA'][0]
+    offData = offRow['DATA'][0]
+    # Doesn't matter which row we grab this from; they are identical
+    tCal = onRow['TCAL']
+    print("ON:", onData[0])
+    print("OFF:", offData[0])
+    print("TCAL:", tCal)
+    # print(dataToCalibrate)
+    # import ipdb; ipdb.set_trace()
+    temp = getAntennaTemperature(onData, offData, tCal)
+    print("TEMP: ", temp)
+    # Need to put this BACK into an array where the only element is
+    # the actual array
+    # TODO: This is sooooo dumb, plz fix
+    return np.array([temp])
 
 
 def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
@@ -120,35 +153,59 @@ def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
 def getRawPower(data, feed, pol, freq):
     "Simply get the raw power, for the right phase"
     print("getRawPower", feed, pol, freq)
-    phases = list(set([k[3] for k in data.keys()]))
-    phase = 'Signal / No Cal' if len(phases) > 1 else phases[0]
-    key = (feed, pol, freq, phase)
-    raw, tcal = data[key]
-    return raw
+    phases = np.unique(data['SIGREF', 'CAL'])
+    phase = (0, 0) if len(phases) > 1 else phases[0]
+
+
+    sigref, cal = phase
+    mask = (
+        (data['FEED'] == feed) &
+        (data['SIGREF'] == sigref) &
+        (data['CAL'] == cal) &
+        (data['CENTER_SKY'] == freq) &
+        (np.char.rstrip(data['POLARIZE']) == pol)
+    )
+
+    raw = data[mask]
+    assert len(raw) == 1, \
+        "There should only ever be one row of data for getRawPower"
+    return raw['DATA']
 
 
 def getFreqForData(data, feed, pol):
     "Get the first data's frequency that has the given feed and polarization"
-    keys = data.keys()
-    # import ipdb; ipdb.set_trace()
-    for f, p, freq, _ in keys:
-        if f == feed and p == pol:
-            return freq
-    return None
+
+    mask = (
+        (data['FEED'] == feed) &
+        (np.char.rstrip(data['POLARIZE']) == pol)
+    )
+
+    if len(np.unique(data[mask]['CENTER_SKY'])) != 1:
+        import ipdb; ipdb.set_trace()
+        raise ValueError("Should be only one CENTER_SKY "
+                         "for a given FEED and POLARIZE")
+
+    return data[mask]['CENTER_SKY'][0]
 
 
-def calibrate(data, mode, polarization, trackBeam):
+def calibrate(data, mode, polarization):
     "Given the decoded DCR data, calibrate it for the given mode and pol"
     print("calibrating with", mode, polarization)
 
     # handle single pols, or averages
-    allPols = list(set([k[1] for k in data.keys()]))
+    allPols = np.unique(data['POLARIZE'])
+    allPols = np.char.rstrip(allPols).tolist()
+
     if polarization == 'Avg':
         pols = allPols
     else:
         pols = [polarization]
 
-    feeds = list(set([k[0] for k in data.keys()]))
+    trackBeam = data.meta['TRCKBEAM']
+
+    print("TRACK BEAM::: ", trackBeam)
+
+    feeds = np.unique(data['FEED'])
     if trackBeam not in feeds:
         # TrackBeam must be wrong?
         # WTF!  How to know which feed to use for raw & tp?
@@ -186,7 +243,7 @@ def calibrate(data, mode, polarization, trackBeam):
         totals[feed] = sum(polPowers) / float(len(pols))
 
     if mode != 'DualBeam' or len(feeds) < 2:
-        return totals[feed]
+        return totals[feeds[0]]
     else:
         return calibrateDualBeam(totals, trackBeam, feeds)
 
@@ -196,24 +253,28 @@ def calibrateAll(projPath, scanNum):
 
     dataMap = getDcrDataMap(projPath, scanNum)
 
-    data = dataMap['data']
-    trackBeam = dataMap['trackBeam']
-    rcvr = dataMap['receiver']
+    # data = dataMap['data']
+    # trackBeam = dataMap['trackBeam']
+    # rcvr = dataMap['receiver']
 
-    print("**** data map summary for", rcvr)
-    keys = sorted(data.keys())
-    for k in keys:
-        print(k, data[k][0][0], data[k][1])
-    print("trackBeam: ", trackBeam)
+    # print("**** data map summary for", rcvr)
+    # keys = sorted(data.keys())
+    # for k in keys:
+    #     print(k, data[k][0][0], data[k][1])
+    # print("trackBeam: ", trackBeam)
 
-    feeds = list(set([k[0] for k in data.keys()]))
+
+    # feeds = list(set([k[0] for k in data.keys()]))
+    feeds = np.unique(dataMap['FEED'])
+    trackBeam = dataMap.meta['TRCKBEAM']
     if trackBeam not in feeds:
         print("trackBeam not in Feeds!  Cant proces")
         return {}
 
-    modes = getSupportedModes(data.keys())
+    modes = getSupportedModes(dataMap)
 
-    pols = list(set([k[1] for k in data.keys()]))
+    pols = np.unique(dataMap['POLARIZE'])
+    pols = np.char.rstrip(pols).tolist()
     pols.append('Avg')
 
     # construct the options of mode and pols
@@ -222,6 +283,7 @@ def calibrateAll(projPath, scanNum):
         for pol in pols:
             calTypes.append((mode, pol))
 
+    rcvr = dataMap['RECEIVER'][0]
     if rcvr == "Rcvr26_40":
         # Ka rcvr only suppports feeds, pols: (1, R), (2, L)
         # so we can't do all the same cal types as everyone else
@@ -233,10 +295,12 @@ def calibrateAll(projPath, scanNum):
 
     cal = {}
     for mode, pol in calTypes:
-        calData = calibrate(data, mode, pol, trackBeam)
+        calData = calibrate(dataMap, mode, pol)
+        # import ipdb; ipdb.set_trace()
         key = (mode, getPolKey(pol))
         cal[key] = list(calData)
 
+    # import ipdb; ipdb.set_trace()
     return cal
 
 

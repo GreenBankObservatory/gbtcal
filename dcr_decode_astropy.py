@@ -630,6 +630,8 @@ def getDcrDataMap(projPath, scanNum):
     tCals = {}
     dataMap = {}
 
+
+
     # now we can actually construct our map
     for feed, pol, freq, phase in descs:
 
@@ -657,8 +659,33 @@ def getDcrDataMap(projPath, scanNum):
 
         dataMap[key] = (rawData, tCal)
 
+
+    tCalCol = Column(name='TCAL',
+                     dtype=tCals.values()[0].dtype,
+                     length=len(data)) 
+    data.add_column(tCalCol)
+    data.add_column(Column(name='INDEX', data=np.arange(len(data))))
+        
+    for tCalKey in tCals:
+        feed, pol, receptor, highCal, centerSkyFreq, bandwidth = tCalKey
+
+        mask = (
+            (data['FEED'] == feed) &
+            (np.char.rstrip(data['POLARIZE']) == pol) &
+            (np.char.rstrip(data['RECEPTOR']) == receptor) &
+            (data['CENTER_SKY'] == centerSkyFreq) &
+            (data['BANDWDTH'] == bandwidth) &
+            (data['HIGH_CAL'] == highCal)
+        )
+        for row in data[mask]:
+            # TODO: Cleaner way of doing this?
+            data[row['INDEX']]['TCAL'] = tCals[tCalKey]
+
+    data.meta['TRCKBEAM'] = trckBeam
+
     # include additional info to the final map
-    return {'data': dataMap, 'trackBeam': trckBeam, 'receiver': receiver}
+    return data
+    # return {'data': dataMap, 'trackBeam': trckBeam, 'receiver': receiver}
 
 
 def getRawData(data, feed, pol, freq, phase):
@@ -774,6 +801,8 @@ if __name__ == '__main__':
     # Call processDcrData with all CLI args
     #calibrateDefaultDcrPolarizations(projPath, scanNum, receiver)
     m = getDcrDataMap(projPath, scanNum)
-    for k, v in m.items():
-        print(k, v[0])
+    import ipdb; ipdb.set_trace()
+    # for k, v in m.items():
+    
+    #     print(k, v[0])
 

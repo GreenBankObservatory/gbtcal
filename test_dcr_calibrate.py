@@ -64,7 +64,7 @@ def testAllResults():
             else:
                 projInfosFlat.append(item)
 
-        for projInfo in projInfosFlat:
+        for projInfo in projInfosFlat[:2]:
             print(projInfo)
             try:
                 projName, projParentPath, scans = projInfo
@@ -76,7 +76,7 @@ def testAllResults():
 
             # print("Processing every {}th scan out of {} total from project {}"
                   # .format(scanStep, len(scans), projName))
-            for scanNum in scans:
+            for scanNum in scans[:1]:
                 sparrow_result_name = (
                     "{proj}:{scan}:{rcvr}".format(proj=projName,
                                                   scan=scanNum,
@@ -93,7 +93,7 @@ def testAllResults():
                     print("Could not find sparrow results file {}"
                           .format(sparrow_results_file))
                     break
-                except:
+                except Exception as e:
                     print("Unknown error in evaluating sparrow file")
                     break
 
@@ -124,11 +124,11 @@ def compare(projPath, scanNum, resultsDict, receiver):
         print("WARNING: skipping this scan: ", projPath, scanNum)
         return True
 
-    try:
-    # if 1:
+    # try:
+    if 1:
         allCal = calibrateAll(projPath, scanNum)
-    except:
-    # else:
+    # except:
+    else:
         print("Something went wrong in calibrateAll")
         return False
 
@@ -146,16 +146,18 @@ def compare(projPath, scanNum, resultsDict, receiver):
         mode, pol = k
         print("compare results: ", k, v[0], resultsDict[k][0])
         # if mode != 'Raw':
-        if len(v) != len(resultsDict[k]):
+        if len(v[0]) != len(resultsDict[k]):
+            import ipdb; ipdb.set_trace()
             print("results have different lengths")
             return False
-        for ourV, sparrowV in zip(v, resultsDict[k]):
+        for ourV, sparrowV in zip(v[0], resultsDict[k]):
             tolerance = 1e-6
             # make up for the fact that sparrow rounds its (Raw, Avg) 
             if mode == 'Raw' and pol == 'Avg':
                 ourV = int(ourV)
             # if mode != 'DualBeam':    
             if tolerance < abs(ourV - sparrowV):
+                import ipdb; ipdb.set_trace()
                 print("values dont' match", ourV, sparrowV)
                 return False
 
@@ -166,13 +168,11 @@ def compare(projPath, scanNum, resultsDict, receiver):
 
 if __name__ == '__main__':
     testAllResults()
-    # # # proj = "AGBT11B_081_01"
-    # # proj = "AGBT11B_009_01"
-    # proj = "AGBT11B_034_11"
-    # path = "/home/archive/science-data/11B"
-    # # path = "/home/archive/science-data/11B/AGBT11B_009_01"
-    # scanNum = 1
-    # rx = "RcvrArray18_26"
+    # proj = "AGBT10A-003_02"
+    # path = "/home/archive/science-data/10A"
+    # scanNum = 5
+    # # rx = "RcvrArray18_26"
+    # rx = "Rcvr1_2"
     # fn = "%s:%s:%s" % (proj, scanNum, rx)
     # fullFn = os.path.join("/home/scratch/pmargani/allCalDcrData", fn)
     # print("sparrow file", fullFn)
