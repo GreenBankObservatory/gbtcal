@@ -99,7 +99,7 @@ def calibrateTotalPower(data, feed, pol, freq):
 
     on, tcal = data[onKey]
     off, tcal = data[offKey]
-    print("tcal", tcal)
+    print("tcal, on , off", tcal, on[0], off[0])
     return getAntennaTemperature(on, off, tcal)
 
 
@@ -118,11 +118,31 @@ def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
 
 
 def getRawPower(data, feed, pol, freq):
-    "Simply get the raw power, for the right phase"
+    "Raw power may be simply the data straight from the map"
     print("getRawPower", feed, pol, freq)
+    sig = getSignalRawPower(data, feed, pol, freq)
+    ref = getRefRawPower(data, feed, pol, freq)
+
+    return (sig - ref) if ref is not None else sig
+
+
+def getSignalRawPower(data, feed, pol, freq):
+    "Simply get the raw power for the signal phase"
     phases = list(set([k[3] for k in data.keys()]))
     phase = 'Signal / No Cal' if len(phases) > 1 else phases[0]
     key = (feed, pol, freq, phase)
+    raw, tcal = data[key]
+    return raw
+
+
+def getRefRawPower(data, feed, pol, freq):
+    "Simply get the raw power for the reference phase"
+    phases = list(set([k[3] for k in data.keys()]))
+    refPhase = 'Reference / No Cal'
+    if refPhase not in phases:
+        # bail if we simply don't have that phase
+        return None
+    key = (feed, pol, freq, refPhase)
     raw, tcal = data[key]
     return raw
 
@@ -137,7 +157,7 @@ def getFreqForData(data, feed, pol):
     return None
 
 
-def calibrate(data, mode, polarization, trackBeam):
+def calibrate(data, mode, polarization, trackBeam, receiver):
     "Given the decoded DCR data, calibrate it for the given mode and pol"
     print("calibrating with", mode, polarization)
 
@@ -156,20 +176,24 @@ def calibrate(data, mode, polarization, trackBeam):
         # so just bail.
         return None
 
-
     # get total power for each beam that we need to
     if mode != 'DualBeam':
         # # don't waste time on more then one feed unless u need to
         feeds = [trackBeam]
 
+    kaBeamMap = {'R': 1, 'L': 2}
+
     # if raw mode, couldn't be simpler
     if mode == 'Raw':
-        # feed = feeds[0]
         # handles both single pol, or average
         polPowers = []
         for pol in pols:
-            freq = getFreqForData(data, trackBeam, pol)
-            rawPol = getRawPower(data, trackBeam, pol, freq)
+            if receiver == 'Rcvr26_40':
+                feed = kaBeamMap[pol]
+            else:
+                feed = trackBeam
+            freq = getFreqForData(data, feed, pol)
+            rawPol = getRawPower(data, feed, pol, freq)
             polPowers.append(rawPol)
         # we're done
         return sum(polPowers) / float(len(pols))
@@ -177,9 +201,12 @@ def calibrate(data, mode, polarization, trackBeam):
     # collect total powers from each feed
     totals = {}
     for feed in feeds:
+        print("finding total power for feed:", feed)
         # make this general for both a single pol, and averaging
         polPowers = []
         for pol in pols:
+            if receiver == 'Rcvr26_40':
+                feed = kaBeamMap[pol]
             freq = getFreqForData(data, feed, pol)
             totalPowerPol = calibrateTotalPower(data, feed, pol, freq)
             polPowers.append(totalPowerPol)
@@ -213,6 +240,10 @@ def calibrateAll(projPath, scanNum):
 
     modes = getSupportedModes(data.keys())
 
+    # TBF, Kluge: we still can't do Ka DualBeam
+    if rcvr == 'Rcvr26_40':
+        modes = ['Raw', 'TotalPower']
+
     pols = list(set([k[1] for k in data.keys()]))
     pols.append('Avg')
 
@@ -222,18 +253,9 @@ def calibrateAll(projPath, scanNum):
         for pol in pols:
             calTypes.append((mode, pol))
 
-    if rcvr == "Rcvr26_40":
-        # Ka rcvr only suppports feeds, pols: (1, R), (2, L)
-        # so we can't do all the same cal types as everyone else
-        kaPolMap = {1: 'R', 2: 'L'}
-        calTypes = [
-            ('Raw', kaPolMap[trackBeam]),
-            ('TotalPower', kaPolMap[trackBeam])
-        ]
-
     cal = {}
     for mode, pol in calTypes:
-        calData = calibrate(data, mode, pol, trackBeam)
+        calData = calibrate(data, mode, pol, trackBeam, rcvr)
         key = (mode, getPolKey(pol))
         cal[key] = list(calData)
 
