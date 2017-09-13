@@ -38,7 +38,7 @@ def testAllResults():
         "RcvrArray75_115", # Argus doesn't use Rx cal 
         'Rcvr18_26', # K - Sparrow can't seem to do dual beam
         # 'RcvrArray18_26', # KFPA - beams seem to be missing data a lot
-        'Rcvr26_40', # Ka - how to calibrate this data???
+        # 'Rcvr26_40', # Ka - how to calibrate this data???
     ]
 
     # dataSrcDct = {
@@ -134,6 +134,8 @@ def compare(projPath, scanNum, resultsDict, receiver):
 
     print(sorted(allCal.keys()))
     print(sorted(resultsDict.keys()))
+    # we should be comparing the same types of (modes, pols),
+    # unless its Ka - we aren't doing DualBeam mode yet
     if receiver != "Rcvr26_40":
         if sorted(allCal.keys()) != sorted(resultsDict.keys()):
             print("keys are different!")
@@ -150,7 +152,8 @@ def compare(projPath, scanNum, resultsDict, receiver):
             print("results have different lengths")
             return False
         for ourV, sparrowV in zip(v, resultsDict[k]):
-            tolerance = 1e-6
+            # when in raw mode, a diff between 27888 & 27889 is OK
+            tolerance = 1e-6 if mode != 'Raw' else 1
             # make up for the fact that sparrow rounds its (Raw, Avg) 
             if mode == 'Raw' and pol == 'Avg':
                 ourV = int(ourV)
@@ -166,13 +169,17 @@ def compare(projPath, scanNum, resultsDict, receiver):
 
 if __name__ == '__main__':
     testAllResults()
-    # # # proj = "AGBT11B_081_01"
-    # # proj = "AGBT11B_009_01"
-    # proj = "AGBT11B_034_11"
-    # path = "/home/archive/science-data/11B"
-    # # path = "/home/archive/science-data/11B/AGBT11B_009_01"
+    # proj = "AGBT10A_005_03"
+    # proj = "AGBT10A_045_01"
+    # proj = "AGBT10B_020_01"
+    # # # # proj = "AGBT11B_081_01"
+    # # # proj = "AGBT11B_009_01"
+    # # proj = "AGBT11B_034_11"
+    # path = "/home/archive/science-data/10B"
+    # # # path = "/home/archive/science-data/11B/AGBT11B_009_01"
     # scanNum = 1
     # rx = "RcvrArray18_26"
+    # # rx = "Rcvr26_40"
     # fn = "%s:%s:%s" % (proj, scanNum, rx)
     # fullFn = os.path.join("/home/scratch/pmargani/allCalDcrData", fn)
     # print("sparrow file", fullFn)
