@@ -5,7 +5,7 @@ import traceback
 
 import argparse
 from astropy.io import fits
-from astropy.table import Column, Table, join, hstack, vstack
+from astropy.table import Column, Table, hstack, vstack
 
 import numpy as np
 # import matplotlib.pyplot as plt
@@ -25,6 +25,7 @@ import numpy as np
 ###
 
 # All valid receivers that use DCR data
+# TODO: This should be derived from an external table
 RCVRS = [
     'RcvrPF_1',
     'RcvrPF_2',
@@ -74,7 +75,7 @@ def getFitsForScan(projPath, scanNum):
 def getTableByName(hduList, tableName):
     """Given a FITS file HDU list and the name of a table, return its Astropy
     Table representation"""
-
+    print(hduList[hduList.index_of(tableName)])
     return Table.read(hduList[hduList.index_of(tableName)])
 
 

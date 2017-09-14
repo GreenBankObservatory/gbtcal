@@ -202,6 +202,7 @@ def calibrate(data, mode, polarization):
         pols = [polarization]
 
     trackBeam = data.meta['TRCKBEAM']
+    import ipdb; ipdb.set_trace()
 
     print("TRACK BEAM::: ", trackBeam)
 
