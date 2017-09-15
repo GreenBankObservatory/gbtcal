@@ -7,12 +7,8 @@ from calibrator import (
     WBandCalibrator,
     ArgusCalibrator,
 )
-
-from do_calibrate import (
-    doCalibrate,
-    getReceiverTable
-)
-
+from do_calibrate import doCalibrate
+from dcr_decode_astropy import getDcrDataMap
 from rcvr_table import ReceiverTable
 
 class TestCalibrator(unittest.TestCase):
@@ -28,7 +24,12 @@ class TestCalibrator(unittest.TestCase):
         ac = ArgusCalibrator(None, None)
 
     def testTraditionalCalibrator(self):
-        tc = TraditionalCalibrator(None, None)
+        projPath = ("/home/gbtdata/AGBT16B_285_01")
+        scanNum = 5
+        table = getDcrDataMap(projPath, scanNum)
+        tc = TraditionalCalibrator(None, table)
+        values = tc.calibrate()
+        import ipdb; ipdb.set_trace()
 
     def testInvalidCalibrator(self):
         ic = InvalidCalibrator(None, None)
@@ -37,8 +38,8 @@ class TestCalibrator(unittest.TestCase):
 
 class TestDoCalibrate(unittest.TestCase):
     def setUp(self):
-        print("\n")
-        self.receiverTable = ReceiverTable.load('rcvrTable.csv')
+        self.receiverTable = ReceiverTable.load('rcvrTable.test.csv')
+
 
     def testAll(self):
         for receiver in self.receiverTable['M&C Name']:

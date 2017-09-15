@@ -683,6 +683,7 @@ def getDcrDataMap(projPath, scanNum):
             data[row['INDEX']]['TCAL'] = tCals[tCalKey]
 
     data.meta['TRCKBEAM'] = trckBeam
+    data.meta['PROJPATH'] = projPath
 
     # include additional info to the final map
     return data

@@ -141,11 +141,9 @@ def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
 
     assert len(feeds) == 2
     if trackBeam == feeds[0]:
-        sig = feeds[0]
-        ref = feeds[1]
+        sig, ref = feeds
     else:
-        sig = feeds[1]
-        ref = feeds[0]
+        ref, sig = feeds
 
     return feedTotalPowers[sig] - feedTotalPowers[ref]
 
