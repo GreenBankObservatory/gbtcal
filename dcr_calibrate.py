@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from astropy.io import fits
 
 from dcr_decode_astropy import getDcrDataMap
 from CalibrationResults import CalibrationResults
@@ -276,6 +277,7 @@ def calibrateAll(projPath, scanNum):
 
     return cal
 
+
 def getRcvr68_92Gains(projPath, scanNum):
     "For this scan, calculate the gains from previous calseq scan"
     calSeqNum = findWBandCalSeqNum(projPath, scanNum)
@@ -289,33 +291,60 @@ def getRcvr68_92Gains(projPath, scanNum):
         # NO CalSeq scan!  Just set all gains to 1.0
         gains = {}
         for pol in ['X', 'Y']:
-            for feed in [1,2]:
+            for feed in [1, 2]:
                 channel = '%s%s' % (feed, pol)
                 gains[channel] = 1.0
     return gains
-                
+
+
 def findWBandCalSeqNum(projPath, scanNum):
     "For the given project and scan, when is the most recent calseq?"
-    return 0
+    scans = getScanProcedures(projPath)
+
+    # find the most recent CALSEQ scan
+    calseqName = "CALSEQ"
+    calSeqScans = [scan for scan, procname in scans
+                   if scan <= scanNum and procname == calseqName]
+    # if we didn't find any, use 0 to mark this
+    return calSeqScans[-1] if len(calSeqScans) > 0 else 0
+
+
+def getScanProcedures(projPath):
+    "Returns a list of each scan number and its procname"
+    # projName = projPath.split('/')[-1]
+    path = "/".join(projPath.split('/')[:-1])
+
+    scanLog = fits.getdata(os.path.join(projPath, "ScanLog.fits"))
+    scans = []
+    for row in scanLog:
+        _, scan, filepath = row
+        if 'GO' in filepath:
+            goFile = os.path.join(path, filepath)
+            goHdu = fits.open(goFile)
+            h = goHdu[0].header
+            scans.append((scan, h['PROCNAME']))
+    return scans
+
 
 def calibrateTotalPowerRcvr68_92(data, feed, pol, freq, gain):
     "total power for W-band is just the off with a gain"
     offKey = (feed, pol, freq, 'Signal / No Cal')
     off, _ = data[offKey]
     # print("tp from: ", gain, keys, off[0])
-    return gain * (off - np.median(off))  
-
+    return gain * (off - np.median(off))
 
 
 if __name__ == '__main__':
 
     scanNum = 4
-    # projPath = "/home/gbtdata/"
-    projPath = "/home/archive/science-data/12A"
-    # proj = "AGBT16B_288_03"
-    proj = "AGBT12A_072_02"
+    projPath = "/home/gbtdata/"
+    # projPath = "/home/archive/science-data/12A"
+    proj = "AGBT16B_288_03"
+    # proj = "AGBT12A_072_02"
     fullpath = os.path.join(projPath, proj)
-    # calibrateRcvr68_92All(proj, projPath, scanNum)
+
+    # calseqScan = findWBandCalSeqNum(fullpath, scanNum)
+    # print(calseqScan)
     r = calibrateAll(fullpath, scanNum)
     print("calibrateAll:")
     for k, v in r.items():
