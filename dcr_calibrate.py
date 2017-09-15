@@ -2,9 +2,12 @@ import os
 import numpy as np
 
 from dcr_decode_astropy import getDcrDataMap
+from CalibrationResults import CalibrationResults
+
+CALSEQ_RCVRS = ["Rcvr68_92"]
 
 
-def getSupportedModes(dataKeys):
+def getSupportedModes(dataKeys, receiver=None):
     """
     Given the physical attributes of our data, what are 
     the subset of modes supported?
@@ -17,7 +20,7 @@ def getSupportedModes(dataKeys):
     numPhases = len(phases)
 
     # we need more then one phase to do total Power
-    if numPhases <= 1:
+    if numPhases <= 1 and receiver not in CALSEQ_RCVRS:
         # all we support is Raw then
         return modes
     else:
@@ -46,8 +49,9 @@ def calibrateDcrData(projPath, scanNum, mode=None, polarization=None):
 
     data = dataMap['data']
     trackBeam = dataMap['trackBeam']
+    rx = dataMap['receiver']
 
-    modes = getSupportedModes(data.keys())
+    modes = getSupportedModes(data.keys(), receiver=rx)
 
     if mode is not None and mode not in modes:
         raise ValueError("Mode %s not supported" % mode)
@@ -157,7 +161,7 @@ def getFreqForData(data, feed, pol):
     return None
 
 
-def calibrate(data, mode, polarization, trackBeam, receiver):
+def calibrate(data, mode, polarization, trackBeam, receiver, gains=None):
     "Given the decoded DCR data, calibrate it for the given mode and pol"
     print("calibrating with", mode, polarization)
 
@@ -208,7 +212,12 @@ def calibrate(data, mode, polarization, trackBeam, receiver):
             if receiver == 'Rcvr26_40':
                 feed = kaBeamMap[pol]
             freq = getFreqForData(data, feed, pol)
-            totalPowerPol = calibrateTotalPower(data, feed, pol, freq)
+            if receiver == 'Rcvr68_92':
+                channel = '%s%s' % (feed, pol)
+                gain = gains[channel]
+                totalPowerPol = calibrateTotalPowerRcvr68_92(data, feed, pol, freq, gain)
+            else:
+                totalPowerPol = calibrateTotalPower(data, feed, pol, freq)
             polPowers.append(totalPowerPol)
         totals[feed] = sum(polPowers) / float(len(pols))
 
@@ -227,6 +236,10 @@ def calibrateAll(projPath, scanNum):
     trackBeam = dataMap['trackBeam']
     rcvr = dataMap['receiver']
 
+    gains = None
+    if rcvr == 'Rcvr68_92':
+        gains = getRcvr68_92Gains(projPath, scanNum)
+
     print("**** data map summary for", rcvr)
     keys = sorted(data.keys())
     for k in keys:
@@ -238,11 +251,13 @@ def calibrateAll(projPath, scanNum):
         print("trackBeam not in Feeds!  Cant proces")
         return {}
 
-    modes = getSupportedModes(data.keys())
+    modes = getSupportedModes(data.keys(), receiver=rcvr)
 
     # TBF, Kluge: we still can't do Ka DualBeam
     if rcvr == 'Rcvr26_40':
         modes = ['Raw', 'TotalPower']
+    # if rcvr == 'Rcvr68_92':
+    #     modes = ['Raw', 'TotalPower']
 
     pols = list(set([k[1] for k in data.keys()]))
     pols.append('Avg')
@@ -255,16 +270,59 @@ def calibrateAll(projPath, scanNum):
 
     cal = {}
     for mode, pol in calTypes:
-        calData = calibrate(data, mode, pol, trackBeam, rcvr)
+        calData = calibrate(data, mode, pol, trackBeam, rcvr, gains=gains)
         key = (mode, getPolKey(pol))
         cal[key] = list(calData)
 
     return cal
 
+def getRcvr68_92Gains(projPath, scanNum):
+    "For this scan, calculate the gains from previous calseq scan"
+    calSeqNum = findWBandCalSeqNum(projPath, scanNum)
+    if calSeqNum != 0:
+        cal = CalibrationResults()
+        cal.makeCalScan(fullpath, calSeqNum)
+        calData = cal.calData
+        print("calData: ", calData)
+        scanInfo, gains, tsys = calData
+    else:
+        # NO CalSeq scan!  Just set all gains to 1.0
+        gains = {}
+        for pol in ['X', 'Y']:
+            for feed in [1,2]:
+                channel = '%s%s' % (feed, pol)
+                gains[channel] = 1.0
+    return gains
+                
+def findWBandCalSeqNum(projPath, scanNum):
+    "For the given project and scan, when is the most recent calseq?"
+    return 0
+
+def calibrateTotalPowerRcvr68_92(data, feed, pol, freq, gain):
+    "total power for W-band is just the off with a gain"
+    offKey = (feed, pol, freq, 'Signal / No Cal')
+    off, _ = data[offKey]
+    # print("tp from: ", gain, keys, off[0])
+    return gain * (off - np.median(off))  
+
+
 
 if __name__ == '__main__':
-    import sys
-    projPath = sys.argv[1]
-    scanNum = int(sys.argv[2])
-    x = calibrateAll(projPath, scanNum)
-    print("result: ", x.keys())
+
+    scanNum = 4
+    # projPath = "/home/gbtdata/"
+    projPath = "/home/archive/science-data/12A"
+    # proj = "AGBT16B_288_03"
+    proj = "AGBT12A_072_02"
+    fullpath = os.path.join(projPath, proj)
+    # calibrateRcvr68_92All(proj, projPath, scanNum)
+    r = calibrateAll(fullpath, scanNum)
+    print("calibrateAll:")
+    for k, v in r.items():
+        print(k, v[0])
+
+    # import sys
+    # projPath = sys.argv[1]
+    # scanNum = int(sys.argv[2])
+    # x = calibrateAll(projPath, scanNum)
+    # print("result: ", x.keys())
