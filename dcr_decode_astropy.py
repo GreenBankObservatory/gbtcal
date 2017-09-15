@@ -8,6 +8,7 @@ from astropy.io import fits
 from astropy.table import Column, Table, join, hstack, vstack
 
 import numpy as np
+
 # import matplotlib.pyplot as plt
 
 ###
@@ -38,7 +39,7 @@ RCVRS = [
     'Rcvr18_26',
     'Rcvr26_40',
     'Rcvr40_52',
-    'Rcvr69_92',
+    'Rcvr68_92',
     'RcvrArray75_115'
 ]
 
@@ -62,6 +63,7 @@ def getFitsForScan(projPath, scanNum):
     for filePath in scanInfo['FILEPATH']:
         if "SCAN" not in filePath:
             _, _, manager, scanName = filePath.split("/")
+
             # we actually only care about these - no point in raising an error
             # if something like the GO FITS file can't be found.
             if manager in ['DCR', 'IF', 'Antenna'] or manager in RCVRS:
@@ -634,22 +636,24 @@ def getDcrDataMap(projPath, scanNum):
     for feed, pol, freq, phase in descs:
 
         # gather the rx cal info while we're at it
-        mask = ((data['FEED'] == feed) &
-                (np.char.rstrip(data['POLARIZE']) == pol))
-        maskedData = data[mask]
-        receptor = np.char.rstrip(maskedData['RECEPTOR'])[0]
-        centerSkyFreq = maskedData['CENTER_SKY'][0]
-        bandwidth = maskedData['BANDWDTH'][0]
-        highCal = maskedData['HIGH_CAL'][0]
+        tCal = None
+        if receiver not in ['Rcvr68_92', 'RcvrArray75_115']:
+            mask = ((data['FEED'] == feed) &
+                    (np.char.rstrip(data['POLARIZE']) == pol))
+            maskedData = data[mask]
+            receptor = np.char.rstrip(maskedData['RECEPTOR'])[0]
+            centerSkyFreq = maskedData['CENTER_SKY'][0]
+            bandwidth = maskedData['BANDWDTH'][0]
+            highCal = maskedData['HIGH_CAL'][0]
 
-        # maintain a cache to avoid repeating calls to getTcal
-        tCalKey = (feed, pol, receptor, highCal, centerSkyFreq, bandwidth)
-        if tCalKey in tCals:
-            tCal = tCals[tCalKey]
-        else:
-            tCal = getTcal(rcvrCalTable, feed, receptor, pol,
-                           highCal, centerSkyFreq, bandwidth)
-            tCals[tCalKey] = tCal
+            # maintain a cache to avoid repeating calls to getTcal
+            tCalKey = (feed, pol, receptor, highCal, centerSkyFreq, bandwidth)
+            if tCalKey in tCals:
+                tCal = tCals[tCalKey]
+            else:
+                tCal = getTcal(rcvrCalTable, feed, receptor, pol,
+                               highCal, centerSkyFreq, bandwidth)
+                tCals[tCalKey] = tCal
 
         # gather the actual data
         rawData = getRawData(data, feed, pol, freq, phase)
