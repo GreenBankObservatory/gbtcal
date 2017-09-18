@@ -44,6 +44,10 @@ RCVRS = [
     'RcvrArray75_115'
 ]
 
+def wprint(string):
+    """Given a string, prepend ERROR to it and print it to stderr"""
+
+    print("WARNING: {}".format(string), file=sys.stderr)
 
 def eprint(string):
     """Given a string, prepend ERROR to it and print it to stderr"""
@@ -68,7 +72,12 @@ def getFitsForScan(projPath, scanNum):
             # if something like the GO FITS file can't be found.
             if manager in ['DCR', 'IF', 'Antenna'] or manager in RCVRS:
                 fitsPath = os.path.join(projPath, manager, scanName)
-                managerFitsMap[manager] = fits.open(fitsPath)
+                try:
+                    managerFitsMap[manager] = fits.open(fitsPath)
+                except IOError:
+                    wprint("{} is listed in ScanLog.fits as having data for "
+                           "scan {}, but no such data exists in {}! Skipping..."
+                           .format(manager, scanName, fitsPath))
 
     return managerFitsMap
 
@@ -86,12 +95,7 @@ def getIfDataByBackend(ifHduList, backend='DCR'):
     ifTable = getTableByName(ifHduList, 'IF')
 
     # First, we filter out all non-DCR backends
-    # Create a 'mask' -- this is an array of booleans that
-    # indicate which rows are associated with the DCR backend
-    # NOTE: We need to strip whitespace from this column --
-    # this is because our FITS files pad each charfield
-    # https://github.com/astropy/astropy/issues/2608
-    mask = np.char.rstrip(ifTable['BACKEND']) == backend
+    mask = ifTable['BACKEND'] == backend
     # We then filter out these indices
     dcrData = ifTable[mask]
     return dcrData
@@ -336,8 +340,8 @@ def getTcal(rcvrCalTable, feed, receptor, polarization, highCal,
 
     mask = (
         (rcvrCalTable['FEED'] == feed) &
-        (np.char.rstrip(rcvrCalTable['RECEPTOR']) == receptor) &
-        (np.char.rstrip(rcvrCalTable['POLARIZE']) == polarization)
+        (rcvrCalTable['RECEPTOR'] == receptor) &
+        (rcvrCalTable['POLARIZE'] == polarization)
     )
     maskedTable = rcvrCalTable[mask]
     highCalTemps = maskedTable['HIGH_CAL_TEMP']
@@ -371,7 +375,7 @@ def calibrateMultiFeed(dataTable, polarization, rcvrCalTable, trackBeam=None):
     mapFeedToData = {}
     for feed in np.unique(dataTable['FEED']):
         mask = ((dataTable['FEED'] == feed) &
-                (np.char.rstrip(dataTable['POLARIZE']) == polarization))
+                (dataTable['POLARIZE'] == polarization))
         maskedData = dataTable[mask]
 
         assert len(np.unique(maskedData['FEED', 'POLARIZE'])) == 1, \
@@ -386,7 +390,7 @@ def calibrateMultiFeed(dataTable, polarization, rcvrCalTable, trackBeam=None):
         assert len(np.unique(maskedData['HIGH_CAL'])) == 1, \
             "ERROR: >1 HIGH_CAL in maskedData: {}".format(maskedData)
 
-        receptor = np.char.rstrip(maskedData['RECEPTOR'])[0]
+        receptor = maskedData['RECEPTOR'][0]
         centerSkyFreq = maskedData['CENTER_SKY'][0]
         bandwidth = maskedData['BANDWDTH'][0]
         highCal = maskedData['HIGH_CAL'][0]
@@ -612,9 +616,9 @@ def getDcrDataMap(projPath, scanNum):
     devices = set(fitsForScan.keys())
     # receiver = list(devices.intersection(set(RCVRS)))[0]
     rcvrs = list(devices.intersection(set(RCVRS)))
-    if len(rcvrs) == 0:
-        print("Receiver not found in devices: ", devices)
-        return {}
+    # if len(rcvrs) == 0:
+    #     print("Receiver not found in devices: ", devices)
+    #     return {}
     receiver = rcvrs[0]
     print("receiver", receiver)
 
@@ -623,8 +627,8 @@ def getDcrDataMap(projPath, scanNum):
     rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
 
     # retrieve the abbreviated list of attributes
-    a = getDcrDataAttributes(data)
-    print(a)
+    # a = getDcrDataAttributes(data)
+    # print(a)
 
     # retrieve the list of how these attributes combine
     descs = getDcrDataDescriptors(data)
@@ -638,9 +642,9 @@ def getDcrDataMap(projPath, scanNum):
 
         # gather the rx cal info while we're at it
         mask = ((data['FEED'] == feed) &
-                (np.char.rstrip(data['POLARIZE']) == pol))
+                (data['POLARIZE'] == pol))
         maskedData = data[mask]
-        receptor = np.char.rstrip(maskedData['RECEPTOR'])[0]
+        receptor = maskedData['RECEPTOR'][0]
         centerSkyFreq = maskedData['CENTER_SKY'][0]
         bandwidth = maskedData['BANDWDTH'][0]
         highCal = maskedData['HIGH_CAL'][0]
@@ -672,8 +676,8 @@ def getDcrDataMap(projPath, scanNum):
 
         mask = (
             (data['FEED'] == feed) &
-            (np.char.rstrip(data['POLARIZE']) == pol) &
-            (np.char.rstrip(data['RECEPTOR']) == receptor) &
+            (data['POLARIZE'] == pol) &
+            (data['RECEPTOR'] == receptor) &
             (data['CENTER_SKY'] == centerSkyFreq) &
             (data['BANDWDTH'] == bandwidth) &
             (data['HIGH_CAL'] == highCal)
@@ -699,7 +703,7 @@ def getRawData(data, feed, pol, freq, phase):
 
     mask = (
         (data['FEED'] == int(feed)) &
-        (np.char.rstrip(data['POLARIZE']) == pol) &
+        (data['POLARIZE'] == pol) &
         (data['CENTER_SKY'] == float(freq)) &
         (data['SIGREF'] == sigRefState) &
         (data['CAL'] == calState)

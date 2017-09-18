@@ -113,22 +113,22 @@ def calibrateTotalPower(data, feed, pol, freq):
         raise ValueError("Must be exactly one row each for "
                          "'on' and 'off' data")
 
-    if onRow['TCAL'] != offRow['TCAL']:
-        raise ValueError("TCAL of 'on' and 'off' data must be identical")
+    if onRow['FACTOR'] != offRow['FACTOR']:
+        raise ValueError("FACTOR of 'on' and 'off' data must be identical")
 
     # TODO: This is probably a bug in the decode code...
     # This is an array of a single array, so we extract the inner array
     onData = onRow['DATA'][0]
     offData = offRow['DATA'][0]
     # Doesn't matter which row we grab this from; they are identical
-    tCal = onRow['TCAL']
+    tCal = onRow['FACTOR']
     print("ON:", onData[0])
     print("OFF:", offData[0])
-    print("TCAL:", tCal)
+    print("FACTOR:", tCal)
     # print(dataToCalibrate)
     # import ipdb; ipdb.set_trace()
     temp = getAntennaTemperature(onData, offData, tCal)
-    print("TEMP: ", temp)
+    # print("TEMP: ", temp)
     # Need to put this BACK into an array where the only element is
     # the actual array
     # TODO: This is sooooo dumb, plz fix

@@ -3,49 +3,60 @@ import unittest
 from calibrator import (
     Calibrator,
     TraditionalCalibrator,
-    InvalidCalibrator,
     WBandCalibrator,
     ArgusCalibrator,
 )
 from do_calibrate import doCalibrate
-from dcr_decode_astropy import getDcrDataMap
+from dcr_decode_astropy import getFitsForScan, getAntennaTrackBeam
 from rcvr_table import ReceiverTable
+from dcr_table import DcrTable
 
 class TestCalibrator(unittest.TestCase):
     def testCalibrator(self):
-        c = Calibrator(None, None)
+        projPath = ("../test/data/AGBT16B_285_01")
+        scanNum = 5
+        fitsForScan = getFitsForScan(projPath, scanNum)
+        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
+
+        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+        table.meta['TRCKBEAM'] = trckBeam
+        c = Calibrator(None, table)
         with self.assertRaises(NotImplementedError):
-            c.calibrate(None)
+            c.calibrate()
 
-    def testWBandCalibrator(self):
-        wc = WBandCalibrator(None, None)
+    # def testWBandCalibrator(self):
+    #     wc = WBandCalibrator(None, None)
 
-    def testArgusCalibrator(self):
-        ac = ArgusCalibrator(None, None)
+    # def testArgusCalibrator(self):
+    #     ac = ArgusCalibrator(None, None)
 
     def testTraditionalCalibrator(self):
-        projPath = ("/home/gbtdata/AGBT16B_285_01")
+        projPath = ("../test/data/AGBT16B_285_01")
         scanNum = 5
-        table = getDcrDataMap(projPath, scanNum)
+        fitsForScan = getFitsForScan(projPath, scanNum)
+        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
+
+        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+        table.meta['TRCKBEAM'] = trckBeam
         tc = TraditionalCalibrator(None, table)
         values = tc.calibrate()
-        import ipdb; ipdb.set_trace()
-
-    def testInvalidCalibrator(self):
-        ic = InvalidCalibrator(None, None)
-        with self.assertRaises(NotImplementedError):
-            ic.calibrate(None)
-
-class TestDoCalibrate(unittest.TestCase):
-    def setUp(self):
-        self.receiverTable = ReceiverTable.load('rcvrTable.test.csv')
+        # import ipdb; ipdb.set_trace()
 
 
-    def testAll(self):
-        for receiver in self.receiverTable['M&C Name']:
-            print
-            doCalibrate(receiver, self.receiverTable, None)
+# class TestDoCalibrate(unittest.TestCase):
+#     def setUp(self):
+#         self.receiverTable = ReceiverTable.load('rcvrTable.test.csv')
 
-    def testInvalidReceiver(self):
-        with self.assertRaises(ValueError):
-            doCalibrate('fake!', self.receiverTable, None)
+#     # def testRcvr1_2(self):
+#     #     projPath =
+#     #     table = getDcrDataMap(projPath, scanNum)
+#     #     doCalibrate(receiver, self.receiverTable, table)
+
+#     def testAll(self):
+#         for receiver in self.receiverTable['M&C Name']:
+#             print
+#             doCalibrate(receiver, self.receiverTable, None)
+
+#     def testInvalidReceiver(self):
+#         with self.assertRaises(ValueError):
+#             doCalibrate('fake!', self.receiverTable, None)

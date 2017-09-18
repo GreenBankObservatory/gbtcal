@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import sys
 
 from astropy.table import Column, Table, hstack, vstack
@@ -20,8 +21,8 @@ def stripTable(table):
             # has been stripped from the right side
             stripped_column = Column(name=column.name,
                                      data=numpy.char.rstrip(column))
-            print("Replacing column {} with stripped version"
-                  .format(column.name))
+            # print("Replacing column {} with stripped version"
+            #       .format(column.name))
             table.replace_column(column.name, stripped_column)
 
 
@@ -233,4 +234,11 @@ class DcrTable(Table):
         # TODO: Uncomment this if we are doing L band... something about
         # redundant data that needs to be removed
         # return filteredIfTable[filteredIfTable['PORT'] <= 3]
+
+        projPath = os.path.dirname(os.path.dirname(dcrHdu.filename()))
+        filteredIfTable.meta['PROJPATH'] = os.path.realpath(projPath)
+
+        filteredIfTable.add_column(
+            Column(name='INDEX', data=numpy.arange(len(filteredIfTable))))
+
         return filteredIfTable

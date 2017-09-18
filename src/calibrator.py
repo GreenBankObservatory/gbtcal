@@ -34,15 +34,13 @@ class Calibrator(object):
     def findCalFactors(self, data):
         raise NotImplementedError("findCalFactors() must be implemented for "
                                   "all Calibrator subclasses!")
-        
+
     def doMath(self, dataTable, polOption, refBeam):
         raise NotImplementedError("doMath() must be implemented for "
                                   "all Calibrator subclasses!")
 
     def calibrate(self, polOption='Both', doGain=True, refBeam=False):
         newTable = self.ifDcrDataTable.copy()
-        # TODO: Shouldn't have to do this; should be done already
-        stripTable(newTable)
 
         # TODO: Should this be done here? Opens the possibility of
         # some error silently preventing the replacement
@@ -60,7 +58,7 @@ class Calibrator(object):
 class TraditionalCalibrator(Calibrator):
     def findCalFactors(self, data):
         print("Looking at tCals and stuff")
-        
+
         receiver = data['RECEIVER'][0]
 
         fitsForScan = getFitsForScan(self.projPath, self.scanNum)
@@ -69,7 +67,7 @@ class TraditionalCalibrator(Calibrator):
 
         # TODO: Double check this assumption
         uniqueRows = numpy.unique(data['FEED', 'POLARIZE',
-                                       'CENTER_SKY', 'BANDWDTH', 
+                                       'CENTER_SKY', 'BANDWDTH',
                                        'HIGH_CAL'])
         for feed, pol, centerSkyFreq, bandwidth, highCal in uniqueRows:
             mask = ((data['FEED'] == feed) &
@@ -77,14 +75,14 @@ class TraditionalCalibrator(Calibrator):
                     (data['CENTER_SKY'] == centerSkyFreq) &
                     (data['BANDWDTH'] == bandwidth) &
                     (data['HIGH_CAL'] == highCal))
-            
+
             maskedData = data[mask]
 
             if len(numpy.unique(maskedData['RECEPTOR'])) != 1:
                 raise ValueError("The rows in the receiver calibration file "
                                  "must all be unique for all "
                                  "feed/polarization/frequency groupings.")
-            
+
             receptor = maskedData['RECEPTOR'][0]
 
             tCal = getTcal(rcvrCalTable, feed, receptor, pol,
@@ -106,7 +104,7 @@ class TraditionalCalibrator(Calibrator):
 
         # handle single pols, or averages
         allPols = numpy.unique(dataTable['POLARIZE'])
-        allPols = numpy.char.rstrip(allPols).tolist()
+        allPols = allPols.tolist()
 
         if polOption == 'Both':
             pols = allPols
@@ -168,7 +166,3 @@ class WBandCalibrator(CalSeqCalibrator):
 class ArgusCalibrator(CalSeqCalibrator):
     def findCalFactors(self):
         print("Finding cal factors for Argus doing whatever it does")
-
-
-class InvalidCalibrator(Calibrator):
-    pass
