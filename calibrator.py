@@ -103,7 +103,6 @@ class TraditionalCalibrator(Calibrator):
         # This is the same for all "Traditional" calibrators
         print("Doing math for trad cal")
 
-
         # handle single pols, or averages
         allPols = numpy.unique(dataTable['POLARIZE'])
         allPols = numpy.char.rstrip(allPols).tolist()
@@ -118,6 +117,7 @@ class TraditionalCalibrator(Calibrator):
         print("TRACK BEAM::: ", trackBeam)
 
         feeds = numpy.unique(dataTable['FEED'])
+
         if trackBeam not in feeds:
             # TrackBeam must be wrong?
             # WTF!  How to know which feed to use for raw & tp?
@@ -125,7 +125,9 @@ class TraditionalCalibrator(Calibrator):
             # so just bail.
             return None
 
-        feeds = [trackBeam]
+        if not refBeam:
+            # If only calibrating one beam, don't worry about the other beam.
+            feeds = [trackBeam]
 
         # collect total powers from each feed
         totals = {}
@@ -146,11 +148,9 @@ class TraditionalCalibrator(Calibrator):
                                  "dual beam calibration")
 
             return calibrateDualBeam(totals, trackBeam, feeds)
-
-            # dual beam
         else:
             # total power
-            pass
+            return totals[feeds[0]]
 
 
 class CalSeqCalibrator(Calibrator):
