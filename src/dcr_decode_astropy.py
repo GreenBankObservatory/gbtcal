@@ -8,7 +8,8 @@ from astropy.io import fits
 from astropy.table import Column, Table, hstack, vstack
 
 import numpy as np
-# import matplotlib.pyplot as plt
+
+from dcr_table import DcrTable
 
 ###
 # Author: Thomas Chamberlin
@@ -182,7 +183,7 @@ def consolidateFitsData(dcrHdu, ifHdu):
     # We now have a table that is the correct final size.
     # But, it does not yet have the SIGREF and CAL columns
 
-    # Before we add those, we need to make them the right length. 
+    # Before we add those, we need to make them the right length.
     # We do that by stacking a slice of the state table containing only
     # those two columns n times, where n is the number of rows in the IF
     # DCR table.
@@ -207,7 +208,7 @@ def consolidateFitsData(dcrHdu, ifHdu):
     # So, we now need to map these physical attributes to the actual data!
 
     # Get the sets of unique SIGREF and CAL states. Note that this could
-    # _probably_ be done by simply grabbing the whole column from 
+    # _probably_ be done by simply grabbing the whole column from
     # dcrStateTable, but this way we guarantee uniqueness.
     uniquePorts = np.unique(filteredIfTable['PORT'])
     uniqueSigRefStates = np.unique(filteredIfTable['SIGREF'])
@@ -254,7 +255,7 @@ def consolidateFitsData(dcrHdu, ifHdu):
                                      "and CAL ({})"
                                      .format(sigRefState, calState))
                 phase = phaseStateTable[phaseMask]['PHASE'][0]
-                dataForPortAndPhase = dcrDataTable['DATA'][..., portIndex, phase] 
+                dataForPortAndPhase = dcrDataTable['DATA'][..., portIndex, phase]
                 if not np.all(dataForPortAndPhase ==
                               reshapedData[..., portIndex, sigRefState, calState]):
                     eprint("Phase method data does not match reshape method data!")
@@ -578,7 +579,6 @@ def getDcrDataAttributes(data):
 
 def getDcrDataDescriptors(data):
     "Returns description as a list of (feed, pol, freq, phase)"
-
     columns = ['FEED', 'POLARIZE', 'CENTER_SKY', 'SIGREF', 'CAL']
     desc = data[columns]
 
@@ -603,7 +603,7 @@ def getDcrDataMap(projPath, scanNum):
     """
 
     fitsForScan = getFitsForScan(projPath, scanNum)
-    data = consolidateFitsData(fitsForScan['DCR'], fitsForScan['IF'])
+    data = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
 
     # if we latter calibrate via dual beam, we need to know this
     trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
@@ -663,10 +663,10 @@ def getDcrDataMap(projPath, scanNum):
 
     tCalCol = Column(name='TCAL',
                      dtype=tCals.values()[0].dtype,
-                     length=len(data)) 
+                     length=len(data))
     data.add_column(tCalCol)
     data.add_column(Column(name='INDEX', data=np.arange(len(data))))
-        
+
     for tCalKey in tCals:
         feed, pol, receptor, highCal, centerSkyFreq, bandwidth = tCalKey
 
@@ -726,7 +726,7 @@ def processDcrData(projPath, scanNum, receiver, polarization):
     # print(result)
     # print("-" * 80)
     return result
-    
+
     rcvrCalHduList = fitsForScan[receiver]
     rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
 
@@ -803,8 +803,9 @@ if __name__ == '__main__':
     # Call processDcrData with all CLI args
     #calibrateDefaultDcrPolarizations(projPath, scanNum, receiver)
     m = getDcrDataMap(projPath, scanNum)
-    import ipdb; ipdb.set_trace()
+    print(m)
+    # import ipdb; ipdb.set_trace()
     # for k, v in m.items():
-    
+
     #     print(k, v[0])
 

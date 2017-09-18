@@ -9,23 +9,6 @@ def eprint(string):
 
     print("ERROR: {}".format(string), file=sys.stderr)
 
-# class StrippedTable(Table):
-#     @classmethod
-#     def read(cls, *args, **kwargs):
-#         table = super(StrippedTable, cls).read(*args, **kwargs)
-#         for column in table.columns.values():
-#             # If the type of this column is String or Unicode...
-#             if column.dtype.char in ['S', 'U']:
-#                 # ...replace its data with a copy in which the whitespace
-#                 # has been stripped from the right side
-#                 stripped_column = Column(name=column.name,
-#                                          data=numpy.char.rstrip(column))
-#                 print("Replacing {} with stripped version".format(column.name))
-#                 table.replace_column(column.name, stripped_column)
-
-#         return table
-
-
 def stripTable(table):
     """Given an `astropy.table`, strip all of its string-type columns
     of any right-padding, in place.
@@ -45,9 +28,13 @@ def stripTable(table):
 class DcrTable(Table):
     """A Table representing DCR/IF data from a single scan
     """
-    def __init__(self, dcrHduList, ifHduList):
-        ifDcrTable = self._consolidateFitsData(dcrHduList, ifHduList)
-        super(DcrTable, self).__init__(ifDcrTable)
+    @classmethod
+    def read(cls, dcrHduList, ifHduList):
+        """Given DCR and IF FITS objects, consolidate their data and
+        return the resultant Table as a DcrTable
+        """
+        return cls(cls._consolidateFitsData(dcrHduList, ifHduList))
+
 
     def getUniquePhases(self):
         """Return a `numpy.array` of (SIGREF, CAL) tuples representing
@@ -104,16 +91,17 @@ class DcrTable(Table):
         dcrData = ifTable[mask]
         return dcrData
 
-    def _consolidateFitsData(self, dcrHdu, ifHdu):
+    @classmethod
+    def _consolidateFitsData(cls, dcrHdu, ifHdu):
         """Given DCR and IF HDU objects, pull out the information needed
         to perform calibration into a single Astropy Table, then return it"""
 
         # STATE describes the phases in use
-        dcrStateTable = self.getTableByName(dcrHdu, 'STATE')
+        dcrStateTable = cls.getTableByName(dcrHdu, 'STATE')
         # RECEIVER describes which DCR ports
-        dcrRcvrTable = self.getTableByName(dcrHdu, 'RECEIVER')
+        dcrRcvrTable = cls.getTableByName(dcrHdu, 'RECEIVER')
         # DATA contains the actual data recorded by the DCR
-        dcrDataTable = self.getTableByName(dcrHdu, 'DATA')
+        dcrDataTable = cls.getTableByName(dcrHdu, 'DATA')
 
         # How many unique CAL states are there?
         calStates = numpy.unique(dcrStateTable['CAL'])
@@ -130,7 +118,7 @@ class DcrTable(Table):
                              "DCR.RECEIVER.SIGREF: {}".format(sigRefStates))
 
         # DCR data from IF table
-        ifDcrDataTable = self.getIfDataByBackend(ifHdu)
+        ifDcrDataTable = cls.getIfDataByBackend(ifHdu)
 
         # Our port information is stored in the CHANNELID column of the
         # RECEIVER table
@@ -166,7 +154,7 @@ class DcrTable(Table):
         # We now have a table that is the correct final size.
         # But, it does not yet have the SIGREF and CAL columns
 
-        # Before we add those, we need to make them the right length. 
+        # Before we add those, we need to make them the right length.
         # We do that by stacking a slice of the state table containing only
         # those two columns n times, where n is the number of rows in the IF
         # DCR table.
@@ -190,7 +178,7 @@ class DcrTable(Table):
         # So, we now need to map these physical attributes to the actual data!
 
         # Get the sets of unique SIGREF and CAL states. Note that this could
-        # _probably_ be done by simply grabbing the whole column from 
+        # _probably_ be done by simply grabbing the whole column from
         # dcrStateTable, but this way we guarantee uniqueness.
         uniquePorts = numpy.unique(filteredIfTable['PORT'])
         uniqueSigRefStates = numpy.unique(filteredIfTable['SIGREF'])
@@ -234,7 +222,7 @@ class DcrTable(Table):
                                          "and CAL ({})"
                                          .format(sigRefState, calState))
                     phase = phaseStateTable[phaseMask]['PHASE'][0]
-                    dataForPortAndPhase = dcrDataTable['DATA'][..., portIndex, phase] 
+                    dataForPortAndPhase = dcrDataTable['DATA'][..., portIndex, phase]
                     if not numpy.all(dataForPortAndPhase ==
                                   reshapedData[..., portIndex, sigRefState, calState]):
                         eprint("Phase method data does not match reshape method data!")

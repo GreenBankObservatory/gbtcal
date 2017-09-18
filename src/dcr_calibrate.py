@@ -1,19 +1,20 @@
-import os
-import numpy as np
+import argparse
+import numpy
 
-from dcr_decode_astropy import getDcrDataMap
+from dcr_table import DcrTable
+from dcr_decode_astropy import getFitsForScan
 
 
 def getSupportedModes(data):
     """
-    Given the physical attributes of our data, what are 
+    Given the physical attributes of our data, what are
     the subset of modes supported?
     """
 
     # Raw should always be supported
     modes = ['Raw']
 
-    phases = np.unique(data['CAL', 'SIGREF'])
+    phases = numpy.unique(data['CAL', 'SIGREF'])
     numPhases = len(phases)
 
     # we need more then one phase to do total Power
@@ -23,7 +24,7 @@ def getSupportedModes(data):
     else:
         modes.append('TotalPower')
 
-    feeds = np.unique(data['FEED'])
+    feeds = numpy.unique(data['FEED'])
     numFeeds = len(feeds)
 
     # we need more then one feed for dual beam
@@ -38,16 +39,14 @@ def getSupportedModes(data):
 def calibrateDcrData(projPath, scanNum, mode=None, polarization=None):
     """"
     Calibrate the DCR Data from the given project path and scan
-    using either the given calibration mode and polarization, or 
+    using either the given calibration mode and polarization, or
     the defaults
     """
 
-    dataMap = getDcrDataMap(projPath, scanNum)
+    fitsForScan = getFitsForScan(projPath, scanNum)
+    dataTable = DcrTable(fitsForScan['DCR'], fitsForScan['IF'])
 
-    data = dataMap['data']
-    trackBeam = dataMap['trackBeam']
-
-    modes = getSupportedModes(data)
+    modes = getSupportedModes(dataTable)
 
     if mode is not None and mode not in modes:
         raise ValueError("Mode %s not supported" % mode)
@@ -69,7 +68,7 @@ def calibrateDcrData(projPath, scanNum, mode=None, polarization=None):
         # TBD: map 'XL' to 'X' or 'L'
         pass
 
-    return calibrate(data, mode, polarization, trackBeam)
+    return calibrate(dataTable, mode, polarization)
 
 
 def getPolKey(pol):
@@ -85,7 +84,7 @@ def getPolKey(pol):
 
 
 def getAntennaTemperature(calOnData, calOffData, tCal):
-    countsPerKelvin = (np.sum((calOnData - calOffData) / tCal) /
+    countsPerKelvin = (numpy.sum((calOnData - calOffData) / tCal) /
                        len(calOnData))
     Ta = 0.5 * (calOnData + calOffData) / countsPerKelvin - 0.5 * tCal
     return Ta
@@ -97,7 +96,7 @@ def calibrateTotalPower(data, feed, pol, freq):
 
     mask = (
         (data['FEED'] == feed) &
-        (np.char.rstrip(data['POLARIZE']) == pol) &
+        (numpy.char.rstrip(data['POLARIZE']) == pol) &
         (data['CENTER_SKY'] == freq)
         # TODO: Not sure if this should be here or not...
         # (data['SIGREF'] == 0)
@@ -133,7 +132,7 @@ def calibrateTotalPower(data, feed, pol, freq):
     # Need to put this BACK into an array where the only element is
     # the actual array
     # TODO: This is sooooo dumb, plz fix
-    return np.array([temp])
+    return numpy.array([temp])
 
 
 def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
@@ -151,7 +150,7 @@ def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
 def getRawPower(data, feed, pol, freq):
     "Simply get the raw power, for the right phase"
     print("getRawPower", feed, pol, freq)
-    phases = np.unique(data['SIGREF', 'CAL'])
+    phases = numpy.unique(data['SIGREF', 'CAL'])
     phase = (0, 0) if len(phases) > 1 else phases[0]
 
 
@@ -161,7 +160,7 @@ def getRawPower(data, feed, pol, freq):
         (data['SIGREF'] == sigref) &
         (data['CAL'] == cal) &
         (data['CENTER_SKY'] == freq) &
-        (np.char.rstrip(data['POLARIZE']) == pol)
+        (numpy.char.rstrip(data['POLARIZE']) == pol)
     )
 
     raw = data[mask]
@@ -175,12 +174,11 @@ def getFreqForData(data, feed, pol):
 
     mask = (
         (data['FEED'] == feed) &
-        (np.char.rstrip(data['POLARIZE']) == pol)
+        (numpy.char.rstrip(data['POLARIZE']) == pol)
     )
 
-    if len(np.unique(data[mask]['CENTER_SKY'])) != 1:
-        import ipdb; ipdb.set_trace()
-        raise ValueError("Should be only one CENTER_SKY "
+    if len(numpy.unique(data[mask]['CENTER_SKY'])) != 1:
+        raise ValueError("Should be only one unique CENTER_SKY "
                          "for a given FEED and POLARIZE")
 
     return data[mask]['CENTER_SKY'][0]
@@ -191,8 +189,8 @@ def calibrate(data, mode, polarization):
     print("calibrating with", mode, polarization)
 
     # handle single pols, or averages
-    allPols = np.unique(data['POLARIZE'])
-    allPols = np.char.rstrip(allPols).tolist()
+    allPols = numpy.unique(data['POLARIZE'])
+    allPols = numpy.char.rstrip(allPols).tolist()
 
     if polarization == 'Avg':
         pols = allPols
@@ -200,11 +198,8 @@ def calibrate(data, mode, polarization):
         pols = [polarization]
 
     trackBeam = data.meta['TRCKBEAM']
-    import ipdb; ipdb.set_trace()
 
-    print("TRACK BEAM::: ", trackBeam)
-
-    feeds = np.unique(data['FEED'])
+    feeds = numpy.unique(data['FEED'])
     if trackBeam not in feeds:
         # TrackBeam must be wrong?
         # WTF!  How to know which feed to use for raw & tp?
@@ -249,12 +244,12 @@ def calibrate(data, mode, polarization):
 
 def calibrateAll(projPath, scanNum):
     "Returns a dict of all the possible calibrated data products"
+    fitsForScan = getFitsForScan(projPath, scanNum)
+    dataTable = DcrTable(fitsForScan['DCR'], fitsForScan['IF'])
 
-    dataMap = getDcrDataMap(projPath, scanNum)
-
-    # data = dataMap['data']
-    # trackBeam = dataMap['trackBeam']
-    # rcvr = dataMap['receiver']
+    # data = dataTable['data']
+    # trackBeam = dataTable['trackBeam']
+    # rcvr = dataTable['receiver']
 
     # print("**** data map summary for", rcvr)
     # keys = sorted(data.keys())
@@ -264,16 +259,16 @@ def calibrateAll(projPath, scanNum):
 
 
     # feeds = list(set([k[0] for k in data.keys()]))
-    feeds = np.unique(dataMap['FEED'])
-    trackBeam = dataMap.meta['TRCKBEAM']
+    feeds = numpy.unique(dataTable['FEED'])
+    trackBeam = dataTable.meta['TRCKBEAM']
     if trackBeam not in feeds:
         print("trackBeam not in Feeds!  Cant proces")
         return {}
 
-    modes = getSupportedModes(dataMap)
+    modes = getSupportedModes(dataTable)
 
-    pols = np.unique(dataMap['POLARIZE'])
-    pols = np.char.rstrip(pols).tolist()
+    pols = numpy.unique(dataTable['POLARIZE'])
+    pols = numpy.char.rstrip(pols).tolist()
     pols.append('Avg')
 
     # construct the options of mode and pols
@@ -282,7 +277,7 @@ def calibrateAll(projPath, scanNum):
         for pol in pols:
             calTypes.append((mode, pol))
 
-    rcvr = dataMap['RECEIVER'][0]
+    rcvr = dataTable['RECEIVER'][0]
     if rcvr == "Rcvr26_40":
         # Ka rcvr only suppports feeds, pols: (1, R), (2, L)
         # so we can't do all the same cal types as everyone else
@@ -294,18 +289,29 @@ def calibrateAll(projPath, scanNum):
 
     cal = {}
     for mode, pol in calTypes:
-        calData = calibrate(dataMap, mode, pol)
+        calData = calibrate(dataTable, mode, pol)
         # import ipdb; ipdb.set_trace()
         key = (mode, getPolKey(pol))
         cal[key] = list(calData)
 
-    # import ipdb; ipdb.set_trace()
     return cal
 
 
+def parseArgs():
+    """Parse CLI arguments and return them"""
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("projPath",
+                        help="The path to the project directory")
+    parser.add_argument("scanNum",
+                        help="The scan number you wish to process",
+                        type=int)
+
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    import sys
-    projPath = sys.argv[1]
-    scanNum = int(sys.argv[2])
-    x = calibrateAll(projPath, scanNum)
+    args = parseArgs()
+    x = calibrateAll(args.projPath, args.scanNum)
     print("result: ", x.keys())
+
