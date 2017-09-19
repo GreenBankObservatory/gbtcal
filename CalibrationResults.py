@@ -116,7 +116,7 @@ class CalibrationResults:
         scanLog = fits.getdata(os.path.join(projPath, "ScanLog.fits"))
 
         # Data for the given scan number
-        scanInfo = scanLog[scanLog['SCAN'] == scanNum]       
+        scanInfo = scanLog[scanLog['SCAN'] == scanNum]
         for filePath in scanInfo['FILEPATH']:
             if "SCAN" not in filePath:
                 _, _, manager, scanName = filePath.split("/")

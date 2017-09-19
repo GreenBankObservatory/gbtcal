@@ -49,11 +49,13 @@ class Calibrator(object):
         feeds = numpy.unique(dataTable['FEED'])
 
         if trackBeam not in feeds:
+            # TODO: RAISE ERROR
             # TrackBeam must be wrong?
             # WTF!  How to know which feed to use for raw & tp?
             # we've experimented and shown that there's no happy ending here.
             # so just bail.
-            return None
+            raise ValueError("The track beam is not one of the feeds in the "
+                             "table. Can't do any useful data processing.")
 
         if not refBeam:
             # If only calibrating one beam, don't worry about the other beam.
@@ -220,7 +222,6 @@ class CalSeqCalibrator(Calibrator):
         for row in data:
             index = str(row['FEED']) + row['POLARIZE']
             row['FACTOR'] = gains[index]
-        return row
 
     def calibrateTotalPower(dataTable, feed, pol, freq):
         """Total power for External Cals is just the off with a gain."""
@@ -298,10 +299,10 @@ class WBandCalibrator(CalSeqCalibrator):
         For this scan, calculate the gains from previous calseq scan.
         This has format {"1X": 0.0, "2X": 0.0, "1Y": 0.0, "2Y": 0.0}
         """
-        calSeqNum = self._findMostRecentProcScans("CALSEQ")[0][0]
-        if calSeqNum:
+        calSeqScanNum = self._findMostRecentProcScans("CALSEQ")[0][0]
+        if calSeqScanNum:
             cal = CalibrationResults()
-            cal.makeCalScan(self.projPath, calSeqNum)
+            cal.makeCalScan(self.projPath, calSeqScanNum)
             calData = cal.calData
             print("calData: ", calData)
             scanInfo, gains, tsys = calData
