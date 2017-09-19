@@ -70,7 +70,7 @@ class Rcvr68_92:
 
         try:
             self.scanFinished = False
-            
+
             # protection against missing or mal-formed primary header
             # fitsData = pyfits.open(self.data.getFilename('Rcvr68_92'))
             # fitsData = fits.open(self.filepath)
@@ -84,7 +84,7 @@ class Rcvr68_92:
                 self.fitsver = pHeader['fitsver']
             elif self.debug:
                 print "DEBUG: FITSVER keyword missing"
-            
+
             # if pHeader.has_key('calseq'):
             if 'calseq' in keys:
                 calSeqKW = pHeader['calseq']
@@ -98,7 +98,7 @@ class Rcvr68_92:
                         print "DEBUG: unexpected CALSEQ value: %d" % calSeqKW
             elif self.debug:
                 print "DEBUG: missing CALSEQ keyword"
-                
+
             # if pHeader.has_key('calpos'):
             if 'calpos' in keys:
                 calPosKW = pHeader['calpos']
@@ -110,13 +110,13 @@ class Rcvr68_92:
                     self.calPos = calPosKW
             elif self.debug:
                 print "DEBUG: missing CALPOS keyword"
-                
+
             # if pHeader.has_key('tcold'):
             if 'tcold' in keys:
                 self.tcold = pHeader['tcold']
             elif self.debug:
                 print "DEBUG : mising TCOLD keyword"
-                
+
             # if pHeader.has_key('twarm'):
             if 'twarm' in keys:
                 self.twarm = pHeader['twarm']
@@ -130,7 +130,7 @@ class Rcvr68_92:
                     colNames = tabData.names
                     for i in range(len(colNames)):
                         colNames[i] = colNames[i].lower()
-                        
+
                     if 'timestamp' in colNames:
                         self.dmjds = tabData.field('timestamp')
                         if self.debug:
@@ -139,7 +139,7 @@ class Rcvr68_92:
                         self.dmjds = tabData.field('dmjd')
                     elif self.debug:
                         print "DEBUG: missing a time column of either type"
-                    
+
                     if len(self.dmjds) > 0:
                         if 'motion' in colNames:
                             self.moving = tabData.field('motion')
@@ -149,7 +149,7 @@ class Rcvr68_92:
                                 self.moving.append(False)
                             if self.debug:
                                 print "DEBUG: missing MOTION column"
-                            
+
                         if 'position' in colNames:
                             positionCol = tabData.field('position')
                         else:
@@ -159,7 +159,7 @@ class Rcvr68_92:
                                 positionCol.append(self.calPos)
                             if self.debug:
                                 print "DEBUG: missing POSITION column"
-                            
+
                         if 'tcold' in colNames:
                             self.tcoldCol = tabData.field('tcold')
                         else:
@@ -168,7 +168,7 @@ class Rcvr68_92:
                                 self.tcoldCol.append(self.tcold)
                             if self.debug:
                                 print "DEBUG: missing TCOLD column"
-                            
+
                         if 'twarm' in colNames:
                             self.twarmCol = tabData.field('twarm')
                         else:
@@ -200,7 +200,7 @@ class Rcvr68_92:
                 self.scanFinished = False
                 if self.debug:
                     print "DEBUG: missing table."
-                
+
             self.fitsData.close()
 
             # translate POSITION column values to string if they aren't already
@@ -233,7 +233,7 @@ class Rcvr68_92:
 
         print("finished readInfo")
 
-    def getCalPosString(self,calPosInt):
+    def getCalPosString(self, calPosInt):
         result = "Unknown"
         if calPosInt >= 0 and calPosInt < len(self.calPosTypes):
             result = self.calPosTypes[calPosInt]
@@ -249,7 +249,7 @@ class Rcvr68_92:
 
     def isScanFinished(self):
         return self.scanFinished
-    
+
     def getFitsver(self):
         return self.fitsver
 
@@ -266,7 +266,7 @@ class Rcvr68_92:
             return len(self.positions)
 
         return 0
-    
+
     def getPosition(self,dmjd=None,duration=None):
         "Find the position at DMJD (days).  If it was moving (using duration to give a range) then return 'Unknown'"
         # if manual, return first row value else keyword value if table empty
@@ -318,16 +318,16 @@ class Rcvr68_92:
             return True
 
         # if it gets here, it's an AUTO scan. moving is a possibility.
-        halfDurationDays = duration / (24.0*60.0*60.0) / 2.0
+        halfDurationDays = duration / (24.0 * 60.0 * 60.0) / 2.0
         startTime = dmjd - halfDurationDays
         stopTime = dmjd + halfDurationDays
         startIndex = self.getIndexFromDMJD(startTime)
         stopIndex = self.getIndexFromDMJD(stopTime)
         if startIndex == stopIndex:
             if startIndex < 0:
-                 result = False
+                result = False
             else:
-                 result = self.moving[startIndex]
+                result = self.moving[startIndex]
         else:
             # if they are both < 0, they should both be -1 and caught above
             result = False
@@ -336,8 +336,8 @@ class Rcvr68_92:
                 startIndex = 0
             if stopIndex < 0:
                 # use last row
-                stopIndex = self.numrows()-1
-            for i in range(startIndex,(stopIndex+1)):
+                stopIndex = self.numrows() - 1
+            for i in range(startIndex, stopIndex + 1):
                 result = result or self.moving[i]
                 if result:
                     break

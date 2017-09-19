@@ -24,11 +24,27 @@ class TestCalibrator(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             c.calibrate()
 
-    # def testWBandCalibrator(self):
-    #     wc = WBandCalibrator(None, None)
+    def testWBandCalibrator(self):
+        projPath = ("../test/data/AGBT16B_420_01")
+        scanNum = 2
+        fitsForScan = getFitsForScan(projPath, scanNum)
+        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
 
-    # def testArgusCalibrator(self):
-    #     ac = ArgusCalibrator(None, None)
+        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+        table.meta['TRCKBEAM'] = trckBeam
+        cal = WBandCalibrator(None, table)
+        values = cal.calibrate()
+
+    def testArgusCalibrator(self):
+        projPath = ("../test/data/TGBT15A_901_58")
+        scanNum = 10
+        fitsForScan = getFitsForScan(projPath, scanNum)
+        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
+
+        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+        table.meta['TRCKBEAM'] = trckBeam
+        cal = ArgusCalibrator(None, table)
+        values = cal.calibrate()
 
     def testTraditionalCalibrator(self):
         projPath = ("../test/data/AGBT16B_285_01")
@@ -38,9 +54,8 @@ class TestCalibrator(unittest.TestCase):
 
         table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
         table.meta['TRCKBEAM'] = trckBeam
-        tc = TraditionalCalibrator(None, table)
-        values = tc.calibrate()
-        # import ipdb; ipdb.set_trace()
+        cal = TraditionalCalibrator(None, table)
+        values = cal.calibrate()
 
 
 # class TestDoCalibrate(unittest.TestCase):

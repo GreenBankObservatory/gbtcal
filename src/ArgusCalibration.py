@@ -1,3 +1,4 @@
+import os
 import numpy
 from astropy.io import fits
 
@@ -19,19 +20,19 @@ class ArgusCalibration:
 
     def getTwarm(self):
         """Read the RcvrArray75_115 FITS file for the TWARM header keyword."""
-        filepath = self.projpath + "RcvrArray75_115" + self.vanefile
+        filepath = os.path.join(self.projpath, "RcvrArray75_115", self.vanefile)
         header = fits.open(filepath)[0].header
         return header["TWARM"] + TEMP_OFFSET
 
     def getVwarm(self):
         """Read the DCR FITS file DATA for VANE scan, and take the median."""
-        filepath = self.projpath + "DCR" + self.vanefile
+        filepath = os.path.join(self.projpath, "DCR", self.vanefile)
         data = fits.open(filepath)[3].data["DATA"]
         return numpy.median(data[:, 0]), numpy.median(data[:, 1])
 
     def getVcold(self):
         """Read the DCR FITS file DATA for SKY scan, and take the median."""
-        filepath = self.projpath + "DCR" + self.skyfile
+        filepath = os.path.join(self.projpath, "DCR", self.skyfile)
         data = fits.open(filepath)[3].data["DATA"]
         return numpy.median(data[:, 0]), numpy.median(data[:, 1])
 

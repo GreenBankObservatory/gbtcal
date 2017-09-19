@@ -33,7 +33,7 @@ def copyFiles(projPath, scan, receiver, scanName, destination="."):
 
     print("Copying {} to {}".format(scanLogPath, newProjPath))
     shutil.copy(scanLogPath, newProjPath)
-    for manager in ["Antenna", "IF", "DCR"]:
+    for manager in ["Antenna", "IF", "DCR", "GO"]:
         oldPath = os.path.join(projPath, manager, scanName)
         newPath = os.path.join(destination, project, manager, scanName)
 

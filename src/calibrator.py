@@ -2,11 +2,11 @@ import os
 import numpy
 
 from astropy.io import fits
-from astropy.table import Column, Table, hstack, vstack
+from astropy.table import Column
 
-from dcr_table import stripTable
 from dcr_decode_astropy import getFitsForScan, getTcal, getRcvrCalTable
 from CalibrationResults import CalibrationResults
+from ArgusCalibration import ArgusCalibration
 
 
 class Calibrator(object):
@@ -28,13 +28,10 @@ class Calibrator(object):
         raise NotImplementedError("findCalFactors() must be implemented for "
                                   "all Calibrator subclasses!")
 
-    def doMath(self, dataTable, polOption, refBeam):
-        # This is the same for all "Cal Seq" calibrators -- right now
-        # just W band and Argus
-        print("Doing math for Cal Seq calibration")
-
+    def doMath(self, data, doGain, polOption, refBeam):
+        """Set up the calculations for all calibration types."""
         # handle single pols, or averages
-        allPols = numpy.unique(dataTable['POLARIZE'])
+        allPols = numpy.unique(data['POLARIZE'])
         allPols = numpy.char.rstrip(allPols).tolist()
 
         if polOption == 'Both':
@@ -42,11 +39,11 @@ class Calibrator(object):
         else:
             pols = [polOption]
 
-        trackBeam = dataTable.meta['TRCKBEAM']
+        trackBeam = data.meta['TRCKBEAM']
 
         print("TRACK BEAM::: ", trackBeam)
 
-        feeds = numpy.unique(dataTable['FEED'])
+        feeds = numpy.unique(data['FEED'])
 
         if trackBeam not in feeds:
             # TODO: RAISE ERROR
@@ -67,14 +64,17 @@ class Calibrator(object):
             # make this general for both a single pol, and averaging
             polPowers = []
             for pol in pols:
-                freq = getFreqForData(dataTable, feed, pol)
-                totalPowerPol = self.calibrateTotalPower(dataTable, feed, pol, freq)
-                polPowers.append(totalPowerPol)
+                freq = self.getFreqForData(data, feed, pol)
+                if doGain:
+                    powerPol = self.calibrateTotalPower(data, feed, pol, freq)
+                else:
+                    powerPol = self.getRawPower(data, feed, pol, freq)
+                polPowers.append(powerPol)
             totals[feed] = sum(polPowers) / float(len(pols))
 
         # If refBeam is True, then Dual Beam
         if refBeam:
-            if numpy.unique(dataTable['FEED']) != 2:
+            if numpy.unique(data['FEED']) != 2:
                 raise ValueError("Data table must contain exactly two "
                                  "unique feeds to perform "
                                  "dual beam calibration")
@@ -95,16 +95,36 @@ class Calibrator(object):
 
         return feedTotalPowers[sig] - feedTotalPowers[ref]
 
+    def getRawPower(self, data, feed, pol, freq):
+        """Simply get the raw power, for the right phase"""
+        print("getRawPower", feed, pol, freq)
+        phases = numpy.unique(data['SIGREF', 'CAL'])
+        phase = (0, 0) if len(phases) > 1 else phases[0]
+
+        sigref, cal = phase
+        mask = (
+            (data['FEED'] == feed) &
+            (data['SIGREF'] == sigref) &
+            (data['CAL'] == cal) &
+            (data['CENTER_SKY'] == freq) &
+            (numpy.char.rstrip(data['POLARIZE']) == pol)
+        )
+
+        raw = data[mask]
+        assert len(raw) == 1, \
+            "There should only ever be one row of data for getRawPower"
+        return raw['DATA']
+
     def getFreqForData(self, data, feed, pol):
         """Get the first data's frequency that has the given feed and polarization"""
         # TODO: REMOVE FROM CLASS?
 
         mask = (
             (data['FEED'] == feed) &
-            (np.char.rstrip(data['POLARIZE']) == pol)
+            (numpy.char.rstrip(data['POLARIZE']) == pol)
         )
 
-        if len(np.unique(data[mask]['CENTER_SKY'])) != 1:
+        if len(numpy.unique(data[mask]['CENTER_SKY'])) != 1:
             raise ValueError("Should be only one CENTER_SKY "
                              "for a given FEED and POLARIZE")
 
@@ -113,9 +133,6 @@ class Calibrator(object):
     def calibrate(self, polOption='Both', doGain=True, refBeam=False):
         newTable = self.ifDcrDataTable.copy()
 
-        # TODO: Should this be done here? Opens the possibility of
-        # some error silently preventing the replacement
-        # of this column with the _real_ factors...
         newTable.add_column(
             Column(name='FACTOR',
                    dtype=numpy.float64,
@@ -123,7 +140,7 @@ class Calibrator(object):
         if doGain:
             self.findCalFactors(newTable)
 
-        return self.doMath(newTable, polOption, refBeam)
+        return self.doMath(newTable, doGain, polOption, refBeam)
 
 
 class TraditionalCalibrator(Calibrator):
@@ -163,17 +180,17 @@ class TraditionalCalibrator(Calibrator):
                 data[row['INDEX']]['FACTOR'] = tCal
 
     def getAntennaTemperature(self, calOnData, calOffData, tCal):
-        countsPerKelvin = (np.sum((calOnData - calOffData) / tCal) /
+        countsPerKelvin = (numpy.sum((calOnData - calOffData) / tCal) /
                            len(calOnData))
         Ta = 0.5 * (calOnData + calOffData) / countsPerKelvin - 0.5 * tCal
         return Ta
 
-    def calibrateTotalPower(dataTable, feed, pol, freq):
+    def calibrateTotalPower(self, data, feed, pol, freq):
         # NOTE: This is AGNOSTIC to SIGREF. That is, it cares only about CAL
 
         mask = (
             (data['FEED'] == feed) &
-            (np.char.rstrip(data['POLARIZE']) == pol) &
+            (numpy.char.rstrip(data['POLARIZE']) == pol) &
             (data['CENTER_SKY'] == freq)
             # TODO: Not sure if this should be here or not...
             # (data['SIGREF'] == 0)
@@ -199,67 +216,54 @@ class TraditionalCalibrator(Calibrator):
         offData = offRow['DATA'][0]
         # Doesn't matter which row we grab this from; they are identical
         tCal = onRow['FACTOR']
-        print("ON:", onData[0])
-        print("OFF:", offData[0])
-        print("TCAL:", tCal)
-        # print(dataToCalibrate)
-        # import ipdb; ipdb.set_trace()
         temp = self.getAntennaTemperature(onData, offData, tCal)
-        print("TEMP: ", temp)
         # Need to put this BACK into an array where the only element is
         # the actual array
         # TODO: This is sooooo dumb, plz fix
-        return np.array([temp])
+        return numpy.array([temp])
 
 
 class CalSeqCalibrator(Calibrator):
     def findCalFactors(self, data):
-        print("Finding cal factors for W band using Cal Seq and stuff")
+        print("Finding cal factors for Cal Seq situation")
         # This is defined in the subclasses
         gains = self.getGains()
+        if gains is None:
+            # We didn't find the gains, so we want to keep FACTOR values 1.0
+            print("Could not find gain values. Setting all gains to 1.0")
+            return
+        print("GAINS IS: ", gains)
         for row in data:
-            index = str(row['FEED']) + row['POLARIZE']
-            row['FACTOR'] = gains[index]
+            index = row['POLARIZE'] + str(row['FEED'])
+            data[row['INDEX']]['FACTOR'] = gains[index]
 
-    def calibrateTotalPower(dataTable, feed, pol, freq):
+    def calibrateTotalPower(self, data, feed, pol, freq):
         """Total power for External Cals is just the off with a gain."""
-
-        mask = (
+        offMask = (
             (data['FEED'] == feed) &
-            (np.char.rstrip(data['POLARIZE']) == pol) &
-            (data['CENTER_SKY'] == freq)
-            # TODO: Not sure if this should be here or not...
-            # (data['SIGREF'] == 0)
+            (numpy.char.rstrip(data['POLARIZE']) == pol) &
+            (data['CENTER_SKY'] == freq) &
+            (data['CAL'] == 0)
         )
 
-        dataToCalibrate = data[mask]
-        onMask = dataToCalibrate['CAL'] == 1
-        offMask = dataToCalibrate['CAL'] == 0
+        offRow = data[offMask]
 
-        onRow = dataToCalibrate[onMask]
-        offRow = dataToCalibrate[offMask]
-
-        if len(onRow) != 1 or len(offRow) != 1:
-            raise ValueError("Must be exactly one row each for "
-                             "'on' and 'off' data")
-
-        if onRow['FACTOR'] != offRow['FACTOR']:
-            raise ValueError("TCAL of 'on' and 'off' data must be identical")
+        if len(offRow) != 1:
+            raise ValueError("Must be exactly one row for 'off' data")
 
         # TODO: This is probably a bug in the decode code...
         # This is an array of a single array, so we extract the inner array
-        onData = onRow['DATA'][0]
         offData = offRow['DATA'][0]
         # Doesn't matter which row we grab this from; they are identical
         gain = offRow['FACTOR']
         # Need to put this BACK into an array where the only element is
         # the actual array
         # TODO: This is sooooo dumb, plz fix
-        calData = gain * (offData - np.median(offData))
-        return np.array([calData])
+        calData = gain * (offData - numpy.median(offData))
+        return numpy.array([calData])
 
     def _getScanProcedures(self):
-        "Returns a list of each scan number and its procname"
+        """Return a list of each scan number and its procname"""
         # projName = projPath.split('/')[-1]
         path = "/".join(self.projPath.split('/')[:-1])
 
@@ -269,9 +273,12 @@ class CalSeqCalibrator(Calibrator):
             _, scan, filepath = row
             if 'GO' in filepath:
                 goFile = os.path.join(path, filepath)
-                goHdu = fits.open(goFile)
-                h = goHdu[0].header
-                scans.append((scan, h['PROCNAME'], os.path.split(filepath)[1]))
+                try:
+                    goHdu = fits.open(goFile)
+                    h = goHdu[0].header
+                    scans.append((scan, h['PROCNAME'], os.path.split(filepath)[1]))
+                except Exception:
+                    print "Could not find GO file, skipping #{}.".format(scan)
         return scans
 
     def _findMostRecentProcScans(self, procname, count=1):
@@ -284,11 +291,13 @@ class CalSeqCalibrator(Calibrator):
 
         procScanNums = [0] * count
 
-        calSeqScans = [scan, file for scan, proc, file in scans
+        calSeqScans = [(scan, file) for (scan, proc, file) in scans
                        if scan <= self.scanNum and proc == procname]
 
         for i in range(min(len(calSeqScans), count)):
             procScanNums[-i - 1] = calSeqScans[-i - 1]
+
+        return procScanNums
 
 
 class WBandCalibrator(CalSeqCalibrator):
@@ -298,27 +307,20 @@ class WBandCalibrator(CalSeqCalibrator):
         This has format {"1X": 0.0, "2X": 0.0, "1Y": 0.0, "2Y": 0.0}
         """
         calSeqScanNum = self._findMostRecentProcScans("CALSEQ")[0][0]
+
         if calSeqScanNum:
             cal = CalibrationResults()
             cal.makeCalScan(self.projPath, calSeqScanNum)
-            calData = cal.calData
-            print("calData: ", calData)
-            scanInfo, gains, tsys = calData
-        else:
-            # NO CalSeq scan!  Just set all gains to 1.0
-            gains = {}
-            for pol in ['X', 'Y']:
-                for feed in [1, 2]:
-                    channel = '%s%s' % (feed, pol)
-                    gains[channel] = 1.0
-        return gains
+            return cal.calData[1]  # gains are in this spot
+        return None
 
 
 class ArgusCalibrator(CalSeqCalibrator):
     def getGains(self):
         """
-        For this scan, calculate the gains from previous calseq scan.
-        This has format {"1X": 0.0, "2X": 0.0, "1Y": 0.0, "2Y": 0.0}
+        For this scan, calculate the gains from most recent VaneCal
+        scan pair.
+        This has format {"10X": 0.0, "11X": 0.0, "10Y": 0.0, "11Y": 0.0}
         """
         calSeqNums = self._findMostRecentProcScans("VANECAL", count=2)
 
@@ -326,13 +328,9 @@ class ArgusCalibrator(CalSeqCalibrator):
             cal = ArgusCalibration(
                 self.projPath, calSeqNums[0][1], calSeqNums[1][1]
             )
-            gains = cal.getGain()
-        else:
-            # Not enough VaneCal scans!  Just set all gains to 1.0
-            gains = {}
-            for pol in ['X', 'Y']:
-                # TODO: NEED TO FIX THIS PART, OBVIOUSLY
-                for feed in [10, 11]:
-                    channel = '%s%s' % (feed, pol)
-                    gains[channel] = 1.0
-        return gains
+            return cal.getGain()
+        return None
+
+
+class InvalidCalibrator(Calibrator):
+    pass
