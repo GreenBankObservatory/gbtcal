@@ -2,7 +2,7 @@ import calibrator
 from rcvr_table import ReceiverTable
 
 
-def doCalibrate(receiver, receiverTable, ifDcrDataTable):
+def doCalibrate(receiver, receiverTable, ifDcrDataTable, **kwargs):
     print("Calibrating {}".format(receiver))
     receiverRow = receiverTable.getReceiverInfo(receiver)
     try:
@@ -20,7 +20,7 @@ def doCalibrate(receiver, receiverTable, ifDcrDataTable):
                          "up to date."
                          .format(receiver, calibratorStr))
 
-    calibratorClass(receiverTable, ifDcrDataTable).calibrate()
+    return calibratorClass(receiverTable, ifDcrDataTable).calibrate(**kwargs)
 
 
 def getReceiverTable():
