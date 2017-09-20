@@ -40,7 +40,7 @@ RCVRS = [
     'Rcvr18_26',
     'Rcvr26_40',
     'Rcvr40_52',
-    'Rcvr69_92',
+    'Rcvr68_92',
     'RcvrArray75_115'
 ]
 
@@ -151,6 +151,7 @@ def consolidateFitsData(dcrHdu, ifHdu):
 
     # DCR data from IF table
     ifDcrData = getIfDataByBackend(ifHdu)
+    import ipdb; ipdb.set_trace()
 
     # Our port information is stored in the CHANNELID column of the
     # RECEIVER table

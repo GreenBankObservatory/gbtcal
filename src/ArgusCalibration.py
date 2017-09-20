@@ -42,4 +42,4 @@ class ArgusCalibration:
         vwarm = self.getVwarm()
         vcold = self.getVcold()
         gains = twarm / (vwarm[0] - vcold[0]), twarm / (vwarm[1] - vcold[1])
-        return {"X10": gains[0], "X11": gains[1]}
+        return {"10X": gains[0], "11X": gains[1]}

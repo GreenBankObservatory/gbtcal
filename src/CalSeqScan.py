@@ -21,13 +21,14 @@
 #     Green Bank, WV 24944-0002 USA
 
 
+import numpy
 from ConfigParser import ConfigParser
 
 from Rcvr68_92 import Rcvr68_92
-from dcr_decode_astropy import getFitsForScan, consolidateFitsData
+from dcr_decode_astropy import getFitsForScan
 from dcr_decode_astropy import getDcrDataDescriptors
 
-import numpy
+from dcr_table import DcrTable
 
 
 class Backend:
@@ -101,7 +102,7 @@ class CalSeqScan:
 
         dcrHdu = self.fitsMap['DCR']
         ifHdu = self.fitsMap['IF']
-        data = consolidateFitsData(dcrHdu, ifHdu)
+        data = DcrTable.read(dcrHdu, ifHdu)
 
         self.backend = Backend(data, dcrHdu)
 

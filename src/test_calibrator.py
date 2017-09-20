@@ -12,6 +12,12 @@ from rcvr_table import ReceiverTable
 from dcr_table import DcrTable
 
 class TestCalibrator(unittest.TestCase):
+
+    def readResultsFile(self, filepath):
+        with open(filepath) as f:
+            stuff = eval(f.read())
+        return stuff
+
     def testCalibrator(self):
         projPath = ("../test/data/AGBT16B_285_01")
         scanNum = 5
@@ -25,7 +31,7 @@ class TestCalibrator(unittest.TestCase):
             c.calibrate()
 
     def testWBandCalibrator(self):
-        projPath = ("../test/data/AGBT16B_420_01")
+        projPath = ("../test/data/AVLB17A_182_04")
         scanNum = 2
         fitsForScan = getFitsForScan(projPath, scanNum)
         trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
@@ -33,7 +39,12 @@ class TestCalibrator(unittest.TestCase):
         table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
         table.meta['TRCKBEAM'] = trckBeam
         cal = WBandCalibrator(None, table)
-        values = cal.calibrate()
+        values = list(cal.calibrate())
+
+        results = self.readResultsFile("../test/results/AVLB17A_182_04:2:Rcvr68_92")
+        expected = results["TotalPower", "Avg"]
+
+        self.assertEquals(values, expected)
 
     def testArgusCalibrator(self):
         projPath = ("../test/data/TGBT15A_901_58")

@@ -140,7 +140,7 @@ class Calibrator(object):
         if doGain:
             self.findCalFactors(newTable)
 
-        return self.doMath(newTable, doGain, polOption, refBeam)
+        return self.doMath(newTable, doGain, polOption, refBeam)[0]
 
 
 class TraditionalCalibrator(Calibrator):
@@ -234,7 +234,7 @@ class CalSeqCalibrator(Calibrator):
             return
         print("GAINS IS: ", gains)
         for row in data:
-            index = row['POLARIZE'] + str(row['FEED'])
+            index = str(row['FEED']) + row['POLARIZE']
             data[row['INDEX']]['FACTOR'] = gains[index]
 
     def calibrateTotalPower(self, data, feed, pol, freq):
