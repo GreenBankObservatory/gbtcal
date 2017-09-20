@@ -1,4 +1,5 @@
 from __future__ import print_function
+import ast
 import argparse
 import os
 import sys
@@ -118,7 +119,7 @@ def testProcessDcrData(sparrow_results_dir, results_manifest):
 
                 try:
                     with open(sparrow_results_file) as f:
-                        resultsDict = eval(f.read())
+                        resultsDict = ast.literal_eval(f.read())
                 except IOError as e:
                     eprint(e)
                     eprint("Could not find sparrow results file {}"
@@ -179,6 +180,6 @@ if __name__ == '__main__':
     # TODO: This is fragile! We need to control the method of creating this
     # data alongside this script or it will be worthless in the future
     with open(args.pathToResultsManifest) as f:
-        results_manifest = eval(f.read())
+        results_manifest = ast.literal_eval(f.read())
 
     testProcessDcrData(args.pathToTestData, results_manifest)

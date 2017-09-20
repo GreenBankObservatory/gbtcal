@@ -1,3 +1,4 @@
+import ast
 import unittest
 
 from calibrator import (
@@ -15,7 +16,7 @@ class TestCalibrator(unittest.TestCase):
 
     def readResultsFile(self, filepath):
         with open(filepath) as f:
-            stuff = eval(f.read())
+            stuff = ast.literal_eval(f.read())
         return stuff
 
     def testCalibrator(self):
