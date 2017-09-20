@@ -147,7 +147,7 @@ class TraditionalCalibrator(Calibrator):
     def findCalFactors(self, data):
         print("Looking at tCals and stuff")
 
-        receiver = data['RECEIVER'][0]
+        receiver = data.meta['RECEIVER']
 
         fitsForScan = getFitsForScan(self.projPath, self.scanNum)
         rcvrCalHduList = fitsForScan[receiver]
