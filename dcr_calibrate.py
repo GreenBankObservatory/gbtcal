@@ -108,9 +108,7 @@ def calibrateTotalPower(data, feed, pol, freq):
     return getAntennaTemperature(on, off, tcal)
 
 
-def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
-    "Here we're just finding the difference between the two beams"
-
+def determineTrackFeed(trackBeam, feeds):
     assert len(feeds) == 2
     if trackBeam == feeds[0]:
         sig = feeds[0]
@@ -118,6 +116,112 @@ def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
     else:
         sig = feeds[1]
         ref = feeds[0]
+    return sig, ref
+
+
+def calibrateBeamSwitchedTBOnly(data, trackBeam, feeds):
+    "Calibrating with the four phases of just the Tracking Beam"
+
+    sigFeed, refFeed = determineTrackFeed(trackBeam, feeds)
+
+    # get the total power of the tracking beam's signal phases
+    kaPolMap = {1: 'R', 2: 'L'}
+    pol = kaPolMap[sigFeed]
+
+    freq = getFreqForData(data, sigFeed, pol)
+
+    sigOnKey = (sigFeed, pol, freq, 'Signal / Cal')
+    sigOffKey = (sigFeed, pol, freq, 'Signal / No Cal')
+
+    sigOn, tcal = data[sigOnKey]
+    sigOff, tcal = data[sigOffKey]
+
+    taSig = getAntennaTemperature(sigOn, sigOff, tcal)
+
+    # get the total power of the tracking beam's ref phases
+    refOnKey = (sigFeed, pol, freq, 'Reference / Cal')
+    refOffKey = (sigFeed, pol, freq, 'Reference / No Cal')
+
+    refOn, _ = data[refOnKey]
+    refOff, _ = data[refOffKey]
+
+    # Note that we need to use the tcal for the ref. beam.
+    pol = kaPolMap[refFeed]
+    freq = getFreqForData(data, refFeed, pol)
+    aKeyForRef = (refFeed, pol, freq, 'Signal / No Cal')
+    _, refCal = data[aKeyForRef]
+
+    taRef = getAntennaTemperature(refOn, refOff, refCal)
+
+    return taSig - taRef
+
+
+# We still don't know how to do this properly for Ka data
+def calibrateBeamSwitched(data, pol, trackBeam, feeds):
+    "Calibrating with four phases, two beams"
+
+    sigFeed, refFeed = determineTrackFeed(trackBeam, feeds)
+
+    kaPolMap = {1: 'R', 2: 'L'}
+
+    sigPol = kaPolMap[sigFeed]
+    refPol = kaPolMap[refFeed]
+
+    sigFreq = getFreqForData(data, sigFeed, sigPol)
+    refFreq = getFreqForData(data, refFeed, refPol)
+
+    # get the two Tcals that apply to each beam
+    sigKey = (sigFeed, sigPol, sigFreq, 'Signal / No Cal')
+    _, sigTcal = data[sigKey]
+    refKey = (refFeed, refPol, refFreq, 'Signal / No Cal')
+    _, refTcal = data[refKey]
+
+    taSig1, taRef1 = getSigRefAntTemperature(data,
+                                             sigPol,
+                                             sigFreq,
+                                             sigFeed,
+                                             sigTcal,
+                                             refTcal)
+    taSig2, taRef2 = getSigRefAntTemperature(data,
+                                             refPol,
+                                             refFreq,
+                                             refFeed,
+                                             refTcal,
+                                             sigTcal)
+
+    print "taSig1, taRef1", taSig1[0], taRef1[0]
+    print "taSig2, taRef2", taSig2[0], taRef2[0]
+
+    return 0.5 * ((taSig1 - taRef1) + (taRef2 - taSig2))
+
+
+def getSigRefAntTemperature(data, pol, freq, feed, sigTcal, refTcal):
+    "For the given feed, get Ant. Temp. using all 4 phases"
+    print "getSigRefAntTemperature for", pol, freq, feed
+
+    sigOnKey = (feed, pol, freq, 'Signal / Cal')
+    sigOffKey = (feed, pol, freq, 'Signal / No Cal')
+
+    refOnKey = (feed, pol, freq, 'Reference / Cal')
+    refOffKey = (feed, pol, freq, 'Reference / No Cal')
+
+    sigOn, _ = data[sigOnKey]
+    sigOff, _ = data[sigOffKey]
+    refOn, _ = data[refOnKey]
+    refOff, _ = data[refOffKey]
+    print "sig on, off, ref on off for beam:", feed
+    print sigOn[0], sigOff[0], refOn[0], refOff[0]
+
+    taSig = getAntennaTemperature(sigOn, sigOff, sigTcal)
+    taRef = getAntennaTemperature(refOn, refOff, refTcal)
+
+    return taSig, taRef
+
+
+def calibrateDualBeam(feedTotalPowers, trackBeam, feeds):
+    "Here we're just finding the difference between the two beams"
+
+    sig, ref = determineTrackFeed(trackBeam, feeds)
 
     return feedTotalPowers[sig] - feedTotalPowers[ref]
 
@@ -182,7 +286,7 @@ def calibrate(data, mode, polarization, trackBeam, receiver, gains=None):
         return None
 
     # get total power for each beam that we need to
-    if mode != 'DualBeam':
+    if mode not in ['DualBeam', 'BeamSwitch', 'BeamSwitchedTBOnly']:
         # # don't waste time on more then one feed unless u need to
         feeds = [trackBeam]
 
@@ -193,6 +297,7 @@ def calibrate(data, mode, polarization, trackBeam, receiver, gains=None):
         # handles both single pol, or average
         polPowers = []
         for pol in pols:
+            # Ka only has one pol per feed
             if receiver == 'Rcvr26_40':
                 feed = kaBeamMap[pol]
             else:
@@ -203,6 +308,11 @@ def calibrate(data, mode, polarization, trackBeam, receiver, gains=None):
         # we're done
         return sum(polPowers) / float(len(pols))
 
+    # This is only supported by Ka apparently
+    if mode == 'BeamSwitchedTBOnly':
+        # to bail here
+        return calibrateBeamSwitchedTBOnly(data, trackBeam, feeds)
+
     # collect total powers from each feed
     totals = {}
     for feed in feeds:
@@ -210,9 +320,11 @@ def calibrate(data, mode, polarization, trackBeam, receiver, gains=None):
         # make this general for both a single pol, and averaging
         polPowers = []
         for pol in pols:
+            # Ka has only one pol per feed
             if receiver == 'Rcvr26_40':
                 feed = kaBeamMap[pol]
             freq = getFreqForData(data, feed, pol)
+            # W-band and Argus have different total power equations
             if receiver == 'Rcvr68_92':
                 channel = '%s%s' % (feed, pol)
                 gain = gains[channel]
@@ -222,9 +334,10 @@ def calibrate(data, mode, polarization, trackBeam, receiver, gains=None):
             polPowers.append(totalPowerPol)
         totals[feed] = sum(polPowers) / float(len(pols))
 
-    if mode != 'DualBeam' or len(feeds) < 2:
+    if mode == 'TotalPower' or len(feeds) < 2:
         return totals[feed]
-    else:
+
+    if mode == 'DualBeam':
         return calibrateDualBeam(totals, trackBeam, feeds)
 
 
@@ -254,11 +367,9 @@ def calibrateAll(projPath, scanNum):
 
     modes = getSupportedModes(data.keys(), receiver=rcvr)
 
-    # TBF, Kluge: we still can't do Ka DualBeam
+    # TBF, Kluge: we still can't do Ka DualBeam or BeamSwitch
     if rcvr == 'Rcvr26_40':
-        modes = ['Raw', 'TotalPower']
-    # if rcvr == 'Rcvr68_92':
-    #     modes = ['Raw', 'TotalPower']
+        modes = ['Raw', 'TotalPower', 'BeamSwitchedTBOnly']
 
     pols = list(set([k[1] for k in data.keys()]))
     pols.append('Avg')
@@ -283,7 +394,7 @@ def getRcvr68_92Gains(projPath, scanNum):
     calSeqNum = findWBandCalSeqNum(projPath, scanNum)
     if calSeqNum != 0:
         cal = CalibrationResults()
-        cal.makeCalScan(fullpath, calSeqNum)
+        cal.makeCalScan(projPath, calSeqNum)
         calData = cal.calData
         print("calData: ", calData)
         scanInfo, gains, tsys = calData
@@ -336,18 +447,26 @@ def calibrateTotalPowerRcvr68_92(data, feed, pol, freq, gain):
 
 if __name__ == '__main__':
 
-    scanNum = 4
-    projPath = "/home/gbtdata/"
+    # scanNum = 2
+    # projPath = "/home/gbtdata/"
     # projPath = "/home/archive/science-data/12A"
-    proj = "AGBT16B_288_03"
+    # proj = "AGBT16B_288_03"
     # proj = "AGBT12A_072_02"
-    fullpath = os.path.join(projPath, proj)
+    # proj = "AVLB17A_182_04"
+    # fullpath = os.path.join(projPath, proj)
 
+    #  /home/archive/science-data/16A/AGBT16A_085_04/ScanLog.fits
+    # projectName = 'AGBT10A_005_04'
+    projectName = 'AGBT16A_085_06'
+    path = '/home/archive/science-data/16A'
+    scanNum = 55
+    projPath = os.path.join(path, projectName)
     # calseqScan = findWBandCalSeqNum(fullpath, scanNum)
     # print(calseqScan)
-    r = calibrateAll(fullpath, scanNum)
+    r = calibrateAll(projPath, scanNum)
     print("calibrateAll:")
     for k, v in r.items():
+
         print(k, v[0])
 
     # import sys
