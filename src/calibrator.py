@@ -74,7 +74,7 @@ class Calibrator(object):
 
         # If refBeam is True, then Dual Beam
         if refBeam:
-            if numpy.unique(data['FEED']) != 2:
+            if len(numpy.unique(data['FEED'])) != 2:
                 raise ValueError("Data table must contain exactly two "
                                  "unique feeds to perform "
                                  "dual beam calibration")
@@ -124,9 +124,15 @@ class Calibrator(object):
             (numpy.char.rstrip(data['POLARIZE']) == pol)
         )
 
-        if len(numpy.unique(data[mask]['CENTER_SKY'])) != 1:
-            raise ValueError("Should be only one CENTER_SKY "
-                             "for a given FEED and POLARIZE")
+
+        numUniqueFreqs = len(numpy.unique(data[mask]['CENTER_SKY']))
+
+        if numUniqueFreqs != 1:
+            import ipdb; ipdb.set_trace()
+            raise ValueError("Should be exactly one CENTER_SKY "
+                             "for a given FEED and POLARIZE. "
+                             "Got {} unique freq values."
+                             .format(numUniqueFreqs))
 
         return data[mask]['CENTER_SKY'][0]
 
