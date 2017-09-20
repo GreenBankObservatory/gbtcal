@@ -199,10 +199,7 @@ class CalSeqScan:
                     # get the data for that channel
                     channelData = self.backend.GetRawPower(feed, pol, phase)
 
-                    print("data", channelData)
-
                     if self.isAuto():  # auto CalSeq
-                        print "Auto calseq!"
                         # This is the more complicated case;
                         # Have to parse channelData according to calpos
                         autoData = {}
@@ -229,7 +226,6 @@ class CalSeqScan:
                         dataType = self.getDataType(calPosition, feed)
                         # Now put data in dict
                         self.scanData[channel] = (dataType, channelData)
-                    print "CalSeqScan.scanData: ", self.scanData
         elif self.getBackendName() in ["Spectrometer", "Vegas"]:
             phase = 0
 

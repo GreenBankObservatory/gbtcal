@@ -9,9 +9,10 @@ from calibrator import (
     ArgusCalibrator,
 )
 from do_calibrate import doCalibrate
-from dcr_decode import decode
+from dcr_decode import decode, getFitsForScan, getAntennaTrackBeam
 from rcvr_table import ReceiverTable
 from dcr_table import DcrTable
+
 
 class TestCalibrator(unittest.TestCase):
 

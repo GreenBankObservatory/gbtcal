@@ -41,7 +41,7 @@ class Calibrator(object):
 
         trackBeam = data.meta['TRCKBEAM']
 
-        print("TRACK BEAM::: ", trackBeam)
+        print("TRACK BEAM:", trackBeam)
 
         feeds = numpy.unique(data['FEED'])
 
@@ -238,7 +238,7 @@ class CalSeqCalibrator(Calibrator):
             # We didn't find the gains, so we want to keep FACTOR values 1.0
             print("Could not find gain values. Setting all gains to 1.0")
             return
-        print("GAINS IS: ", gains)
+        print("Gains are:", gains)
         for row in data:
             index = str(row['FEED']) + row['POLARIZE']
             data[row['INDEX']]['FACTOR'] = gains[index]
@@ -284,7 +284,8 @@ class CalSeqCalibrator(Calibrator):
                     h = goHdu[0].header
                     scans.append((scan, h['PROCNAME'], os.path.split(filepath)[1]))
                 except Exception:
-                    print "Could not find GO file, skipping #{}.".format(scan)
+                    # print "Could not find GO file, skipping #{}.".format(scan)
+                    pass
         return scans
 
     def _findMostRecentProcScans(self, procname, count=1):

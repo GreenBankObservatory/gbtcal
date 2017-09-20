@@ -132,7 +132,7 @@ class CalibrationResults:
             return None
 
     def makeCalScan(self, projPath, scanNum):
-        """ Create CalSeqScan objects to process this scan """
+        """Create CalSeqScan objects to process this scan"""
 
         # projectName = project.GetName()
         projectName = projPath.split('/')[-1]
@@ -160,8 +160,10 @@ class CalibrationResults:
             print "Incomplete calibration sequence"
 
     def makeCalObservation(self, project, procsize):
-        """ Make dict of CalSeqScans for scannums
-            {scannum: CalSeqScan} """
+        """
+        Make dict of CalSeqScans for scannums
+        {scannum: CalSeqScan}
+        """
         # Try to complete the set
         if len(self.scans) != len(self.scannums):
             for scannum in self.scannums:
@@ -174,13 +176,13 @@ class CalibrationResults:
         return len(self.scans) == len(self.scannums)
 
     def determineScans(self, scannum, procseqn, procsize):
-        """ Determine which scans are part of this calibration """
+        """Determine which scans are part of this calibration"""
         firstscan = scannum - procseqn + 1
         lastscan = firstscan + procsize - 1
         return range(firstscan, lastscan + 1)
 
     def addScan(self, scannum, project, seqn, size):
-        """ Adds CalSeqScan to self.scans for given scan number """
+        """Adds CalSeqScan to self.scans for given scan number"""
         try:
             idx = project.getScanIndexByNumber(scannum)
             scan = project.getScan(idx)
@@ -192,7 +194,7 @@ class CalibrationResults:
             self.scans[scannum] = CalSeqScan(project, scan)
 
     def checkScan(self, scan, expectedSeqn, expectedSize):
-        """ Does this scan fit into sequence correctly? """
+        """Does this scan fit into sequence correctly?"""
         scanOkay = True
         # Check PROCSCAN
         if not scan.isCalSeqScan(): scanOkay = False
@@ -202,11 +204,16 @@ class CalibrationResults:
         return scanOkay
 
     def getCalSeqData(self):
-        """ Assemble calseq data into dict by channel, i.e.:
-            {channel: {("Observing": [data]),
-                        "Vcold": [data]), 
-                        "Vwarm": [data])}
-            } """
+        """
+        Assemble calseq data into dict by channel, i.e.:
+            {
+                channel: {
+                    "Observing": [data],
+                    "Vcold": [data],
+                    "Vwarm": [data]
+                }
+            }
+        """
         twarm = []
         tcold = []
         scanData = {}
@@ -245,8 +252,10 @@ class CalibrationResults:
         return calSeqData
 
     def calcGainTsys(self):
-        """ Find gain & Tsys for each channel.
-            Save in self.gain and self.Tsys dicts """
+        """
+        Find gain & Tsys for each channel.
+        Save in self.gain and self.Tsys dicts
+        """
         calSeqData = self.getCalSeqData()
         
         for channel in calSeqData.keys():
@@ -267,15 +276,12 @@ class CalibrationResults:
             self.gain_data[channel] = gain_array
             self.gain[channel] = numpy.median(gain_array)
 
-            print "gain for channel: ", channel, self.gain[channel]
-
             for sky in ["Observing", "Position2", "Position5"]:
                 try:
                     Tsys_array = self.gain[channel] * channelData[sky]
                     tsys_key = channel + "," + sky
                     self.Tsys_data[tsys_key] = Tsys_array
                     self.Tsys[tsys_key] = numpy.median(Tsys_array)
-                    print "Tsys for key", tsys_key, self.Tsys[tsys_key]
                 except KeyError:
                     if sky == "Observing":
                         print "Missing Observing (Sky) data for channel", channel, ": cannot calculate Tsys"
@@ -283,8 +289,10 @@ class CalibrationResults:
         self.calibrated = True
 
     def saveData(self, projectName, backend, gains, Tsys):   
-        """ Save this data in dict for retrieval from GFM.
-            Also save data in text file for AutoOOF processing """
+        """
+        Save this data in dict for retrieval from GFM.
+        Also save data in text file for AutoOOF processing.
+        """
 
         scanInfo = {}
         scanInfo['project'] = projectName
@@ -294,7 +302,9 @@ class CalibrationResults:
         self.saveTextFile(self.calData)
 
     def saveTextFile(self, data):
-        """ Save calibration data in text file for access from other processing. """
+        """
+        Save calibration data in text file for access from other processing.
+        """
 
         # ygorTel = getConfigValue('/home/gbt', 'YGOR_TELESCOPE')
         ygorTel = '/home/sim/'
