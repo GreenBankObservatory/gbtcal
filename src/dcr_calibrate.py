@@ -2,7 +2,7 @@ import argparse
 import numpy
 
 from dcr_table import DcrTable
-from dcr_decode_astropy import getFitsForScan
+from dcr_decode import getFitsForScan
 
 
 def getSupportedModes(data):
@@ -277,7 +277,7 @@ def calibrateAll(projPath, scanNum):
         for pol in pols:
             calTypes.append((mode, pol))
 
-    rcvr = dataTable['RECEIVER'][0]
+    rcvr = dataTable.meta['RECEIVER']
     if rcvr == "Rcvr26_40":
         # Ka rcvr only suppports feeds, pols: (1, R), (2, L)
         # so we can't do all the same cal types as everyone else

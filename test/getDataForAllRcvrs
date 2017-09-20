@@ -1,0 +1,16 @@
+#!/bin/bash
+rcvrs="Rcvr1_2 Rcvr2_3 Rcvr4_6 Rcvr8_10 Rcvr12_18 RcvrArray18_26 Rcvr26_40 Rcvr40_52 Rcvr68_92 RcvrArray75_115"
+
+
+for rcvr in $rcvrs; do
+    echo "Finding project for $rcvr..."
+    path=$(find /home/gbtdata/A* /home/archive/science-data/{17B,17A,16B,16A}/A* -maxdepth 1 -name "$rcvr" -type d -print -quit)
+    if [ -z "$path" ]; then
+        echo "...not found!"
+    else
+        echo "...found: $path"
+        projPath=$(dirname "$path")
+        scan=5
+        getScanFromProject "$projPath" "$scan" "$rcvr" -o "./data"
+    fi
+done

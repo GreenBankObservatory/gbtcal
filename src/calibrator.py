@@ -4,7 +4,7 @@ import numpy
 from astropy.io import fits
 from astropy.table import Column
 
-from dcr_decode_astropy import getFitsForScan, getTcal, getRcvrCalTable
+from dcr_decode import getFitsForScan, getTcal, getRcvrCalTable
 from CalibrationResults import CalibrationResults
 from ArgusCalibration import ArgusCalibration
 
@@ -153,7 +153,7 @@ class TraditionalCalibrator(Calibrator):
     def findCalFactors(self, data):
         print("Looking at tCals and stuff")
 
-        receiver = data['RECEIVER'][0]
+        receiver = data.meta['RECEIVER']
 
         fitsForScan = getFitsForScan(self.projPath, self.scanNum)
         rcvrCalHduList = fitsForScan[receiver]

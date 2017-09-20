@@ -19,21 +19,25 @@ def copyFiles(projPath, scan, receiver, scanName, destination="."):
     newProjPath = os.path.join(destination, project)
     scanLogPath = os.path.join(projPath, "ScanLog.fits")
 
-    rcvrFitsName = os.listdir(os.path.join(projPath, receiver))[0]
-    rcvrFitsPath = os.path.join(projPath, receiver, rcvrFitsName)
-    newRcvrFitsPath = os.path.join(newProjPath, receiver)
-    try:
-        os.makedirs(newRcvrFitsPath)
-    except OSError:
-        pass
+    # Copy the entire receiver directory; we don't know exactly
+    # what format its contents will be in but we will probably
+    # need all of them
+    rcvrDir = os.path.join(projPath, receiver)
+    # rcvrFitsName = os.listdir(os.path.join(projPath, receiver))[0]
+    # rcvrFitsPath = os.path.join(projPath, receiver, rcvrFitsName)
+    newRcvrDir = os.path.join(newProjPath, receiver)
+    # try:
+    #     os.makedirs(newRcvrDir)
+    # except OSError:
+    #     pass
 
 
-    print("Copying {} to {}".format(rcvrFitsPath, newRcvrFitsPath))
-    shutil.copy(rcvrFitsPath, newRcvrFitsPath)
+    print("Copying {} to {}".format(rcvrDir, newRcvrDir))
+    shutil.copytree(rcvrDir, newRcvrDir)
 
     print("Copying {} to {}".format(scanLogPath, newProjPath))
     shutil.copy(scanLogPath, newProjPath)
-    for manager in ["Antenna", "IF", "DCR", "GO"]:
+    for manager in ["Antenna", "IF", "GO", "DCR"]:
         oldPath = os.path.join(projPath, manager, scanName)
         newPath = os.path.join(destination, project, manager, scanName)
 
