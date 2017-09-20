@@ -64,14 +64,6 @@ class Backend:
         dataTab = self.dcrHdu[3].data
         return dataTab.field('TIMETAG')
 
-    def GetNumSamplers(self):
-
-        pols = numpy.unique(self.data['POLARIZE'])
-        feeds = numpy.unique(self.data['FEED'])
-        freqs = numpy.unique(self.data['CENTER_SKY'])
-
-        return len(pols) * len(feeds) * len(freqs)
-
     def GetPhases(self):
         phases = numpy.unique(self.data[['SIGREF', 'CAL']])
         return phases
@@ -105,15 +97,6 @@ class CalSeqScan:
         data = DcrTable.read(dcrHdu, ifHdu)
 
         self.backend = Backend(data, dcrHdu)
-
-        # if self.scan.HasDevice('DCR'):
-            # self.backend = DCR(self.GetDataConnection())
-        # elif self.scan.HasDevice('Spectrometer'):
-        #     self.backend = SpectrometerBanks(self.scan, self.GetReceiverCal())
-        # elif self.scan.HasDevice('VEGAS'):
-        #     self.backend = VegasBanks(self.scan, self.GetReceiverCal())
-        # else:
-            # raise "Only supporting DCR"
 
     def getBackendName(self):
         return self.backend.name
@@ -184,12 +167,6 @@ class CalSeqScan:
             # but don't want to repeat this in loop)
             dmjds = self.backend.GetIntegrationStartTimes()
 
-            # for s in range(self.backend.GetNumSamplers()):
-            #     for p in range(self.backend.GetNumPhases()):
-            #         # Which dict to use?
-            #         feed = self.backend.getSampler(s).GetFeed()
-            #         pol  = self.backend.getSampler(s).GetPolarization()
-            #         channel = str(feed) + pol
             for channel in self.backend.channels:
                 for phase in self.backend.GetPhases():
                     print "channel, phase: ", channel, phase

@@ -239,17 +239,6 @@ class Rcvr68_92:
             result = self.calPosTypes[calPosInt]
         return result
 
-    def update(self):
-        # only update this if the scan is already known to not be finished
-        if not self.scanFinished:
-            self.lastQueriedDMJD = 0.0
-            self.lastQueriedIndex = -1
-            self.hasTable = False
-            self.readInfo()
-
-    def isScanFinished(self):
-        return self.scanFinished
-
     def getFitsver(self):
         return self.fitsver
 
