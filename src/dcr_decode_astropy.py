@@ -6,7 +6,7 @@ from astropy.table import Column, Table, vstack
 import numpy
 
 from util import wprint
-from dcr_table import StrippedTable
+from dcr_table import StrippedTable, DcrTable
 
 ###
 # Author: Thomas Chamberlin
@@ -198,6 +198,7 @@ def sigCalStateToPhaseName(sigRefState, calState):
     return "%s / %s" % (name1, name2)
 
 
+# TODO: This should be removed
 def getDcrDataDescriptors(data):
     "Returns description as a list of (feed, pol, freq, phase)"
     columns = ['FEED', 'POLARIZE', 'CENTER_SKY', 'SIGREF', 'CAL']
@@ -215,3 +216,13 @@ def getDcrDataDescriptors(data):
         phase = sigCalStateToPhaseName(sigref, cal)
         ds.append((feed, pol, freq, phase))
     return ds
+
+
+def decode(projPath, scanNum):
+    """Given a project path and a scan number, return the "decoded"
+    data as a DcrTable instance.
+    """
+    fitsForScan = getFitsForScan(projPath, scanNum)
+    table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+    table.meta['TRCKBEAM'] = getAntennaTrackBeam(fitsForScan['Antenna'])
+    return table

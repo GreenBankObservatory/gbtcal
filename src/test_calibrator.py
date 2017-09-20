@@ -8,7 +8,7 @@ from calibrator import (
     ArgusCalibrator,
 )
 from do_calibrate import doCalibrate
-from dcr_decode_astropy import getFitsForScan, getAntennaTrackBeam
+from dcr_decode_astropy import decode
 from rcvr_table import ReceiverTable
 from dcr_table import DcrTable
 
@@ -22,11 +22,7 @@ class TestCalibrator(unittest.TestCase):
     def testCalibrator(self):
         projPath = ("../test/data/AGBT16B_285_01")
         scanNum = 5
-        fitsForScan = getFitsForScan(projPath, scanNum)
-        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
-
-        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
-        table.meta['TRCKBEAM'] = trckBeam
+        table = decode(projPath, scanNum)
         c = Calibrator(None, table)
         with self.assertRaises(NotImplementedError):
             c.calibrate()
@@ -34,11 +30,7 @@ class TestCalibrator(unittest.TestCase):
     def testWBandCalibrator(self):
         projPath = ("../test/data/AVLB17A_182_04")
         scanNum = 2
-        fitsForScan = getFitsForScan(projPath, scanNum)
-        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
-
-        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
-        table.meta['TRCKBEAM'] = trckBeam
+        table = decode(projPath, scanNum)
         cal = WBandCalibrator(None, table)
         values = list(cal.calibrate())
 
@@ -50,22 +42,15 @@ class TestCalibrator(unittest.TestCase):
     def testArgusCalibrator(self):
         projPath = ("../test/data/TGBT15A_901_58")
         scanNum = 10
-        fitsForScan = getFitsForScan(projPath, scanNum)
-        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
 
-        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
-        table.meta['TRCKBEAM'] = trckBeam
+        table = decode(projPath, scanNum)
         cal = ArgusCalibrator(None, table)
         values = cal.calibrate()
 
     def testTraditionalCalibrator(self):
         projPath = ("../test/data/AGBT16B_285_01")
         scanNum = 5
-        fitsForScan = getFitsForScan(projPath, scanNum)
-        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
-
-        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
-        table.meta['TRCKBEAM'] = trckBeam
+        table = decode(projPath, scanNum)
         cal = TraditionalCalibrator(None, table)
         values = cal.calibrate()
 
