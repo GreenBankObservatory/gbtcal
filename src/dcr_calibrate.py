@@ -2,7 +2,7 @@ import argparse
 import numpy
 
 from dcr_table import DcrTable
-from dcr_decode_astropy import getFitsForScan
+from dcr_decode import getFitsForScan
 
 
 def getSupportedModes(data):

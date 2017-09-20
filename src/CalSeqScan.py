@@ -25,8 +25,8 @@ import numpy
 from ConfigParser import ConfigParser
 
 from Rcvr68_92 import Rcvr68_92
-from dcr_decode_astropy import getFitsForScan
-from dcr_decode_astropy import getDcrDataDescriptors
+from dcr_decode import getFitsForScan
+from dcr_decode import getDcrDataDescriptors
 
 from dcr_table import DcrTable
 
@@ -229,9 +229,9 @@ class CalSeqScan:
                         dataType = self.getDataType(calPosition, feed)
                         # Now put data in dict
                         self.scanData[channel] = (dataType, channelData)
-                    print "CalSeqScan.scanData: ", self.scanData    
+                    print "CalSeqScan.scanData: ", self.scanData
         elif self.getBackendName() in ["Spectrometer", "Vegas"]:
-            phase = 0 
+            phase = 0
 
             for beam in self.backend.getBeams():
                 for pol in self.backend.getPolarizations():

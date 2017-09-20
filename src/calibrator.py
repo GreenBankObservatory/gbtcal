@@ -4,7 +4,7 @@ import numpy
 from astropy.io import fits
 from astropy.table import Column
 
-from dcr_decode_astropy import getFitsForScan, getTcal, getRcvrCalTable
+from dcr_decode import getFitsForScan, getTcal, getRcvrCalTable
 from CalibrationResults import CalibrationResults
 from ArgusCalibration import ArgusCalibration
 

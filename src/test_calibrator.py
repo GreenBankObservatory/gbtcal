@@ -8,7 +8,7 @@ from calibrator import (
     ArgusCalibrator,
 )
 from do_calibrate import doCalibrate
-from dcr_decode_astropy import decode
+from dcr_decode import decode
 from rcvr_table import ReceiverTable
 from dcr_table import DcrTable
 

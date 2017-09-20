@@ -8,7 +8,7 @@ import numpy
 from util import eprint
 
 from dcr_table import DcrTable
-from dcr_decode_astropy import getFitsForScan
+from dcr_decode import getFitsForScan
 
 # These are not unit tests! This is a regression test suite that is intended
 # to ensure that the "new decoding code" results in the exact answers as the
