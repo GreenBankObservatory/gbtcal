@@ -66,6 +66,20 @@ class DcrTable(Table):
         """
         return self.meta['RECEIVER']
 
+
+    def getDataForPhase(self, signal, cal):
+        """Given a signal and cal, return the phase data associated
+        with it. signal = True => Signal; signal = False => reference
+        """
+        # Invert the given signal value -- if the user asks for the
+        # signal beam, that is actually SIGREF = 0
+        sigref = 0 if signal else 1
+        phaseMask = (
+            (self['SIGREF'] == sigref) &
+            (self['CAL'] == int(cal))
+        )
+        return self[phaseMask]
+
     @staticmethod
     def getTableByName(hduList, tableName):
         # TODO: Does not work if there are multiple tables of the same name
