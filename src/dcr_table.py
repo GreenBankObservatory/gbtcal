@@ -21,7 +21,7 @@ class StrippedTable(Table):
                 # ...replace its data with a copy in which the whitespace
                 # has been stripped from the right side
                 strippedColumn = Column(name=column.name,
-                                         data=numpy.char.rstrip(column))
+                                        data=numpy.char.rstrip(column))
                 # print("Replacing column {} with stripped version"
                 #       .format(column.name))
                 table.replace_column(column.name, strippedColumn)
@@ -45,7 +45,6 @@ class DcrTable(StrippedTable):
         return the resultant Table as a DcrTable
         """
         return cls(cls._consolidateFitsData(dcrHduList, ifHduList))
-
 
     def getUniquePhases(self):
         """Return a `numpy.array` of (SIGREF, CAL) tuples representing
@@ -75,7 +74,6 @@ class DcrTable(StrippedTable):
         for this scan
         """
         return self.meta['RECEIVER']
-
 
     def getDataForPhase(self, signal, cal):
         """Given a signal and cal, return the phase data associated
@@ -160,7 +158,6 @@ class DcrTable(StrippedTable):
             'BANDWDTH', 'PORT', 'HIGH_CAL'
         ]
 
-
         # Each of these rows actually has a maximum of four possible states:
         # | `SIGREF` | `CAL` |      Phase key       | Phase index |
         # |----------|-------|----------------------|-------------|
@@ -192,7 +189,7 @@ class DcrTable(StrippedTable):
                                         len(ifDcrDataTable))
         except TypeError:
             eprint("Could not stack DCR table. Is length of ifDcrDataTable 0? {}"
-                  .format(len(ifDcrDataTable)))
+                   .format(len(ifDcrDataTable)))
             eprint(ifDcrDataTable)
             raise
 
@@ -228,9 +225,9 @@ class DcrTable(StrippedTable):
             print("WARNING: IF ports are only a subset of DCR ports used")
 
         reshapedData = dcrDataTable['DATA'].reshape(len(dcrDataTable),
-                                                len(uniquePorts),
-                                                len(uniqueSigRefStates),
-                                                len(uniqueCalStates))
+                                                    len(uniquePorts),
+                                                    len(uniqueSigRefStates),
+                                                    len(uniqueCalStates))
         if len(uniquePorts) != reshapedData.shape[1]:
             eprint("Invalid shape? These should be equal: len(uniquePorts): "
                    "{}; reshapedData.shape[1]: {}"
@@ -251,10 +248,12 @@ class DcrTable(StrippedTable):
                                          "and CAL ({})"
                                          .format(sigRefState, calState))
                     phase = phaseStateTable[phaseMask]['PHASE'][0]
-                    dataForPortAndPhase = dcrDataTable['DATA'][..., portIndex, phase]
+                    dataForPortAndPhase = dcrDataTable['DATA'][...,
+                                                               portIndex, phase]
                     if not numpy.all(dataForPortAndPhase ==
-                                  reshapedData[..., portIndex, sigRefState, calState]):
-                        eprint("Phase method data does not match reshape method data!")
+                                     reshapedData[..., portIndex, sigRefState, calState]):
+                        eprint(
+                            "Phase method data does not match reshape method data!")
 
                     stuff.append(dcrDataTable['DATA'][..., portIndex, phase])
 

@@ -41,6 +41,7 @@ RCVRS = [
     'RcvrArray75_115'
 ]
 
+
 def getFitsForScan(projPath, scanNum):
     """Given a project path and a scan number, return the a dict mapping
     manager name to the manager's FITS file (as an HDUList) for that scan"""
@@ -86,14 +87,14 @@ def getHistogramArea(left, right, x, y):
     "Returns area under y from left to right along x as a histogram."
 
     assert x[0] < x[-1], \
-           "Cannot retrieve sensible frequency information from DCR " + \
-           "data. Check CENTER_SKY and/or BANDWDTH columns."
+        "Cannot retrieve sensible frequency information from DCR " + \
+        "data. Check CENTER_SKY and/or BANDWDTH columns."
 
     assert left < right, \
-           "The starting frequency must be less than the ending " + \
-           "frequency in the DCR data."
+        "The starting frequency must be less than the ending " + \
+        "frequency in the DCR data."
     assert len(x) == len(y), \
-           "DCR frequency and temperature data arrays are of unequal size."
+        "DCR frequency and temperature data arrays are of unequal size."
 
     # Is range completely out of bounds?
     if right < x[0]:
@@ -105,10 +106,10 @@ def getHistogramArea(left, right, x, y):
     i = 1
 
     # Find the beginning.
-    mid = (x[i] + x[i-1])/2.0
+    mid = (x[i] + x[i - 1]) / 2.0
     while mid < left:
         i += 1
-        mid = (x[i] + x[i-1])/2.0
+        mid = (x[i] + x[i - 1]) / 2.0
 
     # Add part or extension area of the the first histogram
     A = (mid - left) * y[i - 1]
@@ -116,15 +117,15 @@ def getHistogramArea(left, right, x, y):
 
     # Add up the whole areas of the middle histograms
     while i < len(x):
-        new_mid = (x[i] + x[i-1])/2.0
+        new_mid = (x[i] + x[i - 1]) / 2.0
         if new_mid > right:
             break
-        A += (new_mid - mid) * y[i-1]
+        A += (new_mid - mid) * y[i - 1]
         mid = new_mid
         i += 1
 
     # Add part or extension area of the the last histogram
-    A += (right - mid) * y[i-1]
+    A += (right - mid) * y[i - 1]
 
     return A
 
@@ -190,6 +191,7 @@ def getRcvrCalTable(rcvrCalHduList):
                 table = tmpTable
 
     return table
+
 
 def sigCalStateToPhaseName(sigRefState, calState):
     "Map sigref and cal indicies in data to a GFM-style phase name"

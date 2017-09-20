@@ -107,11 +107,8 @@ class CalSeqScan:
     def GetReceiverCal(self):
         rcvrName = self.scan.getRcvrName()
         try:
-            if self.project is not None and self.project.hasReceiver(rcvrName):
-                return self.project.getRcvrCalibration(rcvrName)
-            else:
-                return RcvrCalibration(scan.getDataConnection())
-        except:
+            return self.project.getRcvrCalibration(rcvrName)
+        except Exception:
             return None
 
     def SetReceiver(self):
@@ -130,14 +127,14 @@ class CalSeqScan:
 
     def getTcold(self):
         """ Reads TCOLD from CalSeq.conf config file """
-        ygorTelescope = "/home/sim" #getConfigValue("/home/sim", "YGOR_TELESCOPE")
+        ygorTelescope = "/home/sim"  # getConfigValue("/home/sim", "YGOR_TELESCOPE")
         filename = ygorTelescope + "/etc/config/CalSeq.conf"
         cp = ConfigParser()
         cp.read(filename)
         try:
             return float(cp.get("all_modes", "tcold"))
-        except:
-            return 50.0  #default
+        except Exception:
+            return 50.0  # default
 
     def getCalPos(self):
         return self.receiver.getCalpos()
@@ -192,11 +189,13 @@ class CalSeqScan:
                                     autoData[dataType] = [channelData[idx]]
                         for datatype in autoData.keys():
                             try:
-                                self.scanData[channel].append((datatype,\
-                                               numpy.array(autoData[datatype])))
+                                self.scanData[channel].append(
+                                    (datatype, numpy.array(autoData[datatype]))
+                                )
                             except KeyError:
-                                self.scanData[channel] = [(datatype,\
-                                               numpy.array(autoData[datatype]))]
+                                self.scanData[channel] = [
+                                    (datatype, numpy.array(autoData[datatype]))
+                                ]
                     else:  # manual CalSeq
                         # This is the simple case, all data is the same type
                         calPosition = self.getCalPos()
@@ -211,38 +210,56 @@ class CalSeqScan:
                     channel = str(beam) + pol[0]
                     self.channels.append(channel)
                     channelData = None
-                    if self.isAuto(): #auto CalSeq
+                    if self.isAuto():  # auto CalSeq
                         autoData = {}
                         for ifnum in self.backend.getIFNumbers():
                             # retrieve the needed Spectrometer class
-                            bankIdx = self.backend.getBankIndex(beam, pol, ifnum)
+                            bankIdx = self.backend.getBankIndex(
+                                beam, pol, ifnum
+                            )
                             bank = self.backend.getBank(bankIdx)
 
-                            # get data for stationary wheel positions during scan
+                            # Data for stationary wheel positions during scan
                             tint = bank.GetIntegrationTime()
                             dmjds = bank.GetIntegrationStartTimes()
                             for idx, dmjd in enumerate(dmjds):
-                                calPosition = self.receiver.getPosition(dmjd, tint)
+                                calPosition = self.receiver.getPosition(
+                                    dmjd, tint
+                                )
                                 if calPosition != "Unknown":
-                                    dataType = self.getDataType(calPosition, beam)
-                                    newData = self.backend.getRawPowerByValues(beam, pol, ifnum, idx, phase)
+                                    dataType = self.getDataType(
+                                        calPosition, beam
+                                    )
+                                    newData = self.backend.getRawPowerByValues(
+                                        beam, pol, ifnum, idx, phase
+                                    )
                                     if numpy.isnan(newData).any():
                                         continue
                                     try:
-                                        autoData[dataType] = numpy.concatenate((autoData[dataType], newData))
+                                        autoData[dataType] = numpy.concatenate(
+                                            (autoData[dataType], newData)
+                                        )
                                     except KeyError:
                                         autoData[dataType] = newData
                         for datatype in autoData.keys():
                             try:
-                                self.scanData[channel].append((datatype, autoData[datatype]))
+                                self.scanData[channel].append(
+                                    (datatype, autoData[datatype])
+                                )
                             except KeyError:
-                                self.scanData[channel] = [(datatype, autoData[datatype])]
+                                self.scanData[channel] = [
+                                    (datatype, autoData[datatype])
+                                ]
                     else:  # manual CalSeq
                         for ifnum in self.backend.getIFNumbers():
-                            for integ in range(self.backend.getNumIntegrations()):
-                                newData = self.backend.getRawPowerByValues(beam, pol, ifnum, integ, phase)
+                            for i in range(self.backend.getNumIntegrations()):
+                                newData = self.backend.getRawPowerByValues(
+                                    beam, pol, ifnum, i, phase
+                                )
                                 try:
-                                    channelData = numpy.concatenate((channelData, newData))
+                                    channelData = numpy.concatenate(
+                                        (channelData, newData)
+                                    )
                                 except ValueError:
                                     channelData = newData
 
@@ -251,11 +268,11 @@ class CalSeqScan:
                         self.scanData[channel] = (dataType, channelData)
 
     def getDataType(self, calPos, feed):
-        """ Converts cal position Cold1/2 to Vwarm or Vcold depending on feed """
+        """Converts cal position Cold1/2 to Vwarm or Vcold depending on feed"""
         if "Cold" in calPos:
             # Convert calPos to key 'Vwarm' or 'Vcold'
-            beamLoad = { "Cold1"    : ("Vcold", "Vwarm"),
-                         "Cold2"    : ("Vwarm", "Vcold")}
+            beamLoad = {"Cold1": ("Vcold", "Vwarm"),
+                        "Cold2": ("Vwarm", "Vcold")}
             dataType = beamLoad[calPos][feed - 1]
         else:
             dataType = calPos

@@ -116,7 +116,9 @@ class Calibrator(object):
         return raw['DATA']
 
     def getFreqForData(self, data, feed, pol):
-        """Get the first data's frequency that has the given feed and polarization"""
+        """
+        Get the first data's frequency that has the given feed and polarization
+        """
         # TODO: REMOVE FROM CLASS?
 
         mask = (
@@ -124,11 +126,11 @@ class Calibrator(object):
             (numpy.char.rstrip(data['POLARIZE']) == pol)
         )
 
-
         numUniqueFreqs = len(numpy.unique(data[mask]['CENTER_SKY']))
 
         if numUniqueFreqs != 1:
-            import ipdb; ipdb.set_trace()
+            import ipdb
+            ipdb.set_trace()
             raise ValueError("Should be exactly one CENTER_SKY "
                              "for a given FEED and POLARIZE. "
                              "Got {} unique freq values."
@@ -282,7 +284,8 @@ class CalSeqCalibrator(Calibrator):
                 try:
                     goHdu = fits.open(goFile)
                     h = goHdu[0].header
-                    scans.append((scan, h['PROCNAME'], os.path.split(filepath)[1]))
+                    scans.append(
+                        (scan, h['PROCNAME'], os.path.split(filepath)[1]))
                 except Exception:
                     # print "Could not find GO file, skipping #{}.".format(scan)
                     pass

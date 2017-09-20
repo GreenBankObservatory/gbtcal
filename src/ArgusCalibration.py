@@ -14,26 +14,26 @@ class ArgusCalibration:
     """
     def __init__(self, path, vane, sky):
         self.projpath = path
-        print "Argus Cal: vane scan = {}, sky scan = {}".format(vane, sky)
+        print "Argus Cal: vane scan = {}f, sky scan = {}".format(vane, sky)
         self.vanefile = vane
         self.skyfile = sky
 
     def getTwarm(self):
         """Read the RcvrArray75_115 FITS file for the TWARM header keyword."""
-        filepath = os.path.join(self.projpath, "RcvrArray75_115", self.vanefile)
-        header = fits.open(filepath)[0].header
+        path = os.path.join(self.projpath, "RcvrArray75_115", self.vanefile)
+        header = fits.open(path)[0].header
         return header["TWARM"] + TEMP_OFFSET
 
     def getVwarm(self):
         """Read the DCR FITS file DATA for VANE scan, and take the median."""
-        filepath = os.path.join(self.projpath, "DCR", self.vanefile)
-        data = fits.open(filepath)[3].data["DATA"]
+        path = os.path.join(self.projpath, "DCR", self.vanefile)
+        data = fits.open(path)[3].data["DATA"]
         return numpy.median(data[:, 0]), numpy.median(data[:, 1])
 
     def getVcold(self):
         """Read the DCR FITS file DATA for SKY scan, and take the median."""
-        filepath = os.path.join(self.projpath, "DCR", self.skyfile)
-        data = fits.open(filepath)[3].data["DATA"]
+        path = os.path.join(self.projpath, "DCR", self.skyfile)
+        data = fits.open(path)[3].data["DATA"]
         return numpy.median(data[:, 0]), numpy.median(data[:, 1])
 
     def getGain(self):

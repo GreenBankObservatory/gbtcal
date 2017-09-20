@@ -42,8 +42,10 @@ class TestCalibrator(unittest.TestCase):
         if refBeam:
             # Get the three DualBeam options
             results['DualBeam', 'Avg'] = cal.calibrate(refBeam=refBeam)
-            results['DualBeam', 'XL'] = cal.calibrate(refBeam=refBeam, polOption="X")
-            results['DualBeam', 'YR'] = cal.calibrate(refBeam=refBeam, polOption="Y")
+            results['DualBeam', 'XL'] = cal.calibrate(
+                refBeam=refBeam, polOption="X")
+            results['DualBeam', 'YR'] = cal.calibrate(
+                refBeam=refBeam, polOption="Y")
 
         return results
 
@@ -65,8 +67,10 @@ class TestCalibrator(unittest.TestCase):
         projPath = ("../test/data/AVLB17A_182_04")
         scanNum = 2
 
-        expected = self.readResultsFile("../test/results/AVLB17A_182_04:2:Rcvr68_92")
-        answers = self.generateAllCalibrations(WBandCalibrator, projPath, scanNum, refBeam=2)
+        expected = self.readResultsFile(
+            "../test/results/AVLB17A_182_04:2:Rcvr68_92")
+        answers = self.generateAllCalibrations(
+            WBandCalibrator, projPath, scanNum, refBeam=2)
 
         for key in answers:
             self.assertTrue(numpy.allclose(answers[key], expected[key]))
@@ -83,8 +87,11 @@ class TestCalibrator(unittest.TestCase):
         projPath = ("../test/data/AGBT16B_285_01")
         scanNum = 5
 
-        expected = self.readResultsFile("../test/results/AGBT16B_285_01:5:Rcvr1_2")
-        answers = self.generateAllCalibrations(TraditionalCalibrator, projPath, scanNum)
+        expected = self.readResultsFile(
+            "../test/results/AGBT16B_285_01:5:Rcvr1_2")
+        answers = self.generateAllCalibrations(
+            TraditionalCalibrator, projPath, scanNum)
 
         for key in answers:
-            self.assertTrue(numpy.allclose(answers[key], expected[key], rtol=2e-5))
+            self.assertTrue(numpy.allclose(
+                answers[key], expected[key], rtol=2e-5))

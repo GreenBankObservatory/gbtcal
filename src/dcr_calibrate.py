@@ -153,7 +153,6 @@ def getRawPower(data, feed, pol, freq):
     phases = numpy.unique(data['SIGREF', 'CAL'])
     phase = (0, 0) if len(phases) > 1 else phases[0]
 
-
     sigref, cal = phase
     mask = (
         (data['FEED'] == feed) &
@@ -207,7 +206,6 @@ def calibrate(data, mode, polarization):
         # so just bail.
         return None
 
-
     # get total power for each beam that we need to
     if mode != 'DualBeam':
         # # don't waste time on more then one feed unless u need to
@@ -256,7 +254,6 @@ def calibrateAll(projPath, scanNum):
     # for k in keys:
     #     print(k, data[k][0][0], data[k][1])
     # print("trackBeam: ", trackBeam)
-
 
     # feeds = list(set([k[0] for k in data.keys()]))
     feeds = numpy.unique(dataTable['FEED'])
@@ -314,4 +311,3 @@ if __name__ == '__main__':
     args = parseArgs()
     x = calibrateAll(args.projPath, args.scanNum)
     print("result: ", x.keys())
-
