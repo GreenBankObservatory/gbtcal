@@ -1,3 +1,4 @@
+import ast
 import os
 from astropy.io import fits
 
@@ -14,7 +15,8 @@ def hasRedundantScanNums(projPath):
     prevScan = scanNums[0]
     for scanNum in scanNums:
         if scanNum - prevScan < 0:
-            print("WARNING: Possibly redundant scan! Scan {} comes after {} in {}".format(projPath, scanNum, prevScan))
+            print("WARNING: Possibly redundant scan! Scan {} comes after {} in {}".format(
+                projPath, scanNum, prevScan))
             return True
         prevScan = scanNum
 
@@ -30,15 +32,15 @@ def testAllResults():
 
     dataSrcDctFn = "/users/pmargani/tmp/rcvrDCRscans.txt"
     with open(dataSrcDctFn, 'r') as f:
-        dataSrcDct = eval(f.read())
+        dataSrcDct = ast.literal_eval(f.read())
 
     # skipRcvrs = ["Rcvr68_92", "RcvrArray75_115", 'Rcvr26_40', 'Rcvr12_18', 'Rcvr18_26']
     skipRcvrs = [
-        "Rcvr68_92", # W band doesn't use Rx cal
-        "RcvrArray75_115", # Argus doesn't use Rx cal 
-        'Rcvr18_26', # K - Sparrow can't seem to do dual beam
+        "Rcvr68_92",  # W band doesn't use Rx cal
+        "RcvrArray75_115",  # Argus doesn't use Rx cal
+        'Rcvr18_26',  # K - Sparrow can't seem to do dual beam
         # 'RcvrArray18_26', # KFPA - beams seem to be missing data a lot
-        'Rcvr26_40', # Ka - how to calibrate this data???
+        'Rcvr26_40',  # Ka - how to calibrate this data???
     ]
 
     # dataSrcDct = {
@@ -75,7 +77,7 @@ def testAllResults():
             projPath = os.path.join(projParentPath, projName)
 
             # print("Processing every {}th scan out of {} total from project {}"
-                  # .format(scanStep, len(scans), projName))
+            # .format(scanStep, len(scans), projName))
             for scanNum in scans[:1]:
                 sparrow_result_name = (
                     "{proj}:{scan}:{rcvr}".format(proj=projName,
@@ -87,7 +89,7 @@ def testAllResults():
 
                 try:
                     with open(sparrow_results_file) as f:
-                        resultsDict = eval(f.read())
+                        resultsDict = ast.literal_eval(f.read())
                 except IOError as e:
                     print(e)
                     print("Could not find sparrow results file {}"
@@ -114,8 +116,8 @@ def testAllResults():
         print("bads: ")
         for b in bads:
             print(b)
-        print("num bads", len(bads)) 
-        print("num checked:", numChecked)               
+        print("num bads", len(bads))
+        print("num checked:", numChecked)
 
 
 def compare(projPath, scanNum, resultsDict, receiver):
@@ -141,23 +143,25 @@ def compare(projPath, scanNum, resultsDict, receiver):
     print("&&& sparrow reults")
     for k, v in resultsDict.items():
         print(k, v[0])
-    print ("&&& ")    
+    print ("&&& ")
     for k, v in allCal.items():
         mode, pol = k
         print("compare results: ", k, v[0], resultsDict[k][0])
         # if mode != 'Raw':
         if len(v[0]) != len(resultsDict[k]):
-            import ipdb; ipdb.set_trace()
+            import ipdb
+            ipdb.set_trace()
             print("results have different lengths")
             return False
         for ourV, sparrowV in zip(v[0], resultsDict[k]):
             tolerance = 1e-6
-            # make up for the fact that sparrow rounds its (Raw, Avg) 
+            # make up for the fact that sparrow rounds its (Raw, Avg)
             if mode == 'Raw' and pol == 'Avg':
                 ourV = int(ourV)
-            # if mode != 'DualBeam':    
+            # if mode != 'DualBeam':
             if tolerance < abs(ourV - sparrowV):
-                import ipdb; ipdb.set_trace()
+                import ipdb
+                ipdb.set_trace()
                 print("values dont' match", ourV, sparrowV)
                 return False
 
@@ -177,7 +181,7 @@ if __name__ == '__main__':
     # fullFn = os.path.join("/home/scratch/pmargani/allCalDcrData", fn)
     # print("sparrow file", fullFn)
     # with open(fullFn, 'r') as f:
-    #     sparrowResults = eval(f.read())
+    #     sparrowResults = ast.literal_eval(f.read())
     # print("sparrow results keys: ", sparrowResults.keys())
     # for k, v in sparrowResults.items():
     #     print(k, v[0])

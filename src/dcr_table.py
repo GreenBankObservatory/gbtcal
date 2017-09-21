@@ -1,32 +1,42 @@
-from __future__ import print_function
 import os
-import sys
 
 from astropy.table import Column, Table, hstack, vstack
 import numpy
 
-def eprint(string):
-    """Given a string, prepend ERROR to it and print it to stderr"""
+from util import eprint
 
-    print("ERROR: {}".format(string), file=sys.stderr)
 
-def stripTable(table):
-    """Given an `astropy.table`, strip all of its string-type columns
-    of any right-padding, in place.
+class StrippedTable(Table):
+    """An implementation of Table that strips all right padding from
+    string columns when calling read()
     """
-    for column in table.columns.values():
-        # If the type of this column is String or Unicode...
-        if column.dtype.char in ['S', 'U']:
-            # ...replace its data with a copy in which the whitespace
-            # has been stripped from the right side
-            stripped_column = Column(name=column.name,
-                                     data=numpy.char.rstrip(column))
-            # print("Replacing column {} with stripped version"
-            #       .format(column.name))
-            table.replace_column(column.name, stripped_column)
+    @staticmethod
+    def _stripTable(table):
+        """Given an `astropy.table`, strip all of its string-type columns
+        of any right-padding, in place.
+        """
+        for column in table.columns.values():
+            # If the type of this column is String or Unicode...
+            if column.dtype.char in ['S', 'U']:
+                # ...replace its data with a copy in which the whitespace
+                # has been stripped from the right side
+                strippedColumn = Column(name=column.name,
+                                        data=numpy.char.rstrip(column))
+                # print("Replacing column {} with stripped version"
+                #       .format(column.name))
+                table.replace_column(column.name, strippedColumn)
+
+    @classmethod
+    def read(cls, *args, **kwargs):
+        # Get a table instance using Table's read()
+        table = super(StrippedTable, cls).read(*args, **kwargs)
+        # Strip the table in place
+        cls._stripTable(table)
+        # Return the Table as a StrippedTable
+        return cls(table)
 
 
-class DcrTable(Table):
+class DcrTable(StrippedTable):
     """A Table representing DCR/IF data from a single scan
     """
     @classmethod
@@ -35,7 +45,6 @@ class DcrTable(Table):
         return the resultant Table as a DcrTable
         """
         return cls(cls._consolidateFitsData(dcrHduList, ifHduList))
-
 
     def getUniquePhases(self):
         """Return a `numpy.array` of (SIGREF, CAL) tuples representing
@@ -66,13 +75,25 @@ class DcrTable(Table):
         """
         return self.meta['RECEIVER']
 
+    def getDataForPhase(self, signal, cal):
+        """Given a signal and cal, return the phase data associated
+        with it. signal = True => Signal; signal = False => reference
+        """
+        # Invert the given signal value -- if the user asks for the
+        # signal beam, that is actually SIGREF = 0
+        sigref = 0 if signal else 1
+        phaseMask = (
+            (self['SIGREF'] == sigref) &
+            (self['CAL'] == int(cal))
+        )
+        return self[phaseMask]
+
     @staticmethod
     def getTableByName(hduList, tableName):
         # TODO: Does not work if there are multiple tables of the same name
         """Given a FITS file HDU list and the name of a table, return its Astropy
         Table representation"""
-        table = Table.read(hduList[hduList.index_of(tableName)])
-        stripTable(table)
+        table = StrippedTable.read(hduList[hduList.index_of(tableName)])
         return table
 
     @classmethod
@@ -127,10 +148,14 @@ class DcrTable(Table):
         # file they are 1-indexed
         dcrPorts = dcrRcvrTable['CHANNELID']
 
+        if len(numpy.unique(ifDcrDataTable['RECEIVER'])) != 1:
+            raise ValueError("There must only be one RECEIVER per scan!")
+
+        ifDcrDataTable.meta['RECEIVER'] = ifDcrDataTable['RECEIVER'][0]
         # Strip out unneeded/misleading columns
         filteredIfTable = ifDcrDataTable[
-            'RECEIVER', 'FEED', 'RECEPTOR', 'POLARIZE', 'CENTER_SKY',
-            'BANDWDTH', 'PORT', 'SRFEED1', 'SRFEED2', 'HIGH_CAL'
+            'FEED', 'RECEPTOR', 'POLARIZE', 'CENTER_SKY',
+            'BANDWDTH', 'PORT', 'HIGH_CAL'
         ]
 
         # Each of these rows actually has a maximum of four possible states:
@@ -164,7 +189,7 @@ class DcrTable(Table):
                                         len(ifDcrDataTable))
         except TypeError:
             eprint("Could not stack DCR table. Is length of ifDcrDataTable 0? {}"
-                  .format(len(ifDcrDataTable)))
+                   .format(len(ifDcrDataTable)))
             eprint(ifDcrDataTable)
             raise
 
@@ -200,9 +225,9 @@ class DcrTable(Table):
             print("WARNING: IF ports are only a subset of DCR ports used")
 
         reshapedData = dcrDataTable['DATA'].reshape(len(dcrDataTable),
-                                                len(uniquePorts),
-                                                len(uniqueSigRefStates),
-                                                len(uniqueCalStates))
+                                                    len(uniquePorts),
+                                                    len(uniqueSigRefStates),
+                                                    len(uniqueCalStates))
         if len(uniquePorts) != reshapedData.shape[1]:
             eprint("Invalid shape? These should be equal: len(uniquePorts): "
                    "{}; reshapedData.shape[1]: {}"
@@ -223,10 +248,12 @@ class DcrTable(Table):
                                          "and CAL ({})"
                                          .format(sigRefState, calState))
                     phase = phaseStateTable[phaseMask]['PHASE'][0]
-                    dataForPortAndPhase = dcrDataTable['DATA'][..., portIndex, phase]
+                    dataForPortAndPhase = dcrDataTable['DATA'][...,
+                                                               portIndex, phase]
                     if not numpy.all(dataForPortAndPhase ==
-                                  reshapedData[..., portIndex, sigRefState, calState]):
-                        eprint("Phase method data does not match reshape method data!")
+                                     reshapedData[..., portIndex, sigRefState, calState]):
+                        eprint(
+                            "Phase method data does not match reshape method data!")
 
                     stuff.append(dcrDataTable['DATA'][..., portIndex, phase])
 

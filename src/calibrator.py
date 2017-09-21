@@ -4,7 +4,7 @@ import numpy
 from astropy.io import fits
 from astropy.table import Column
 
-from dcr_decode_astropy import getFitsForScan, getTcal, getRcvrCalTable
+from dcr_decode import getFitsForScan, getTcal, getRcvrCalTable
 from CalibrationResults import CalibrationResults
 from ArgusCalibration import ArgusCalibration
 
@@ -41,7 +41,7 @@ class Calibrator(object):
 
         trackBeam = data.meta['TRCKBEAM']
 
-        print("TRACK BEAM::: ", trackBeam)
+        print("TRACK BEAM:", trackBeam)
 
         feeds = numpy.unique(data['FEED'])
 
@@ -74,7 +74,7 @@ class Calibrator(object):
 
         # If refBeam is True, then Dual Beam
         if refBeam:
-            if numpy.unique(data['FEED']) != 2:
+            if len(numpy.unique(data['FEED'])) != 2:
                 raise ValueError("Data table must contain exactly two "
                                  "unique feeds to perform "
                                  "dual beam calibration")
@@ -116,16 +116,25 @@ class Calibrator(object):
         return raw['DATA']
 
     def getFreqForData(self, data, feed, pol):
-        """Get the first data's frequency that has the given feed and polarization"""
+        """
+        Get the first data's frequency that has the given feed and polarization
+        """
         # TODO: REMOVE FROM CLASS?
 
         mask = (
             (data['FEED'] == feed) &
             (numpy.char.rstrip(data['POLARIZE']) == pol)
         )
-        if len(numpy.unique(data[mask]['CENTER_SKY'])) != 1:
-            raise ValueError("Should be only one CENTER_SKY "
-                             "for a given FEED and POLARIZE")
+
+        numUniqueFreqs = len(numpy.unique(data[mask]['CENTER_SKY']))
+
+        if numUniqueFreqs != 1:
+            import ipdb
+            ipdb.set_trace()
+            raise ValueError("Should be exactly one CENTER_SKY "
+                             "for a given FEED and POLARIZE. "
+                             "Got {} unique freq values."
+                             .format(numUniqueFreqs))
 
         return data[mask]['CENTER_SKY'][0]
 
@@ -146,7 +155,7 @@ class TraditionalCalibrator(Calibrator):
     def findCalFactors(self, data):
         print("Looking at tCals and stuff")
 
-        receiver = data['RECEIVER'][0]
+        receiver = data.meta['RECEIVER']
 
         fitsForScan = getFitsForScan(self.projPath, self.scanNum)
         rcvrCalHduList = fitsForScan[receiver]
@@ -269,7 +278,7 @@ class CalSeqCalibrator(Calibrator):
             # We didn't find the gains, so we want to keep FACTOR values 1.0
             print("Could not find gain values. Setting all gains to 1.0")
             return
-        print("GAINS IS: ", gains)
+        print("Gains are:", gains)
         for row in data:
             index = str(row['FEED']) + row['POLARIZE']
             data[row['INDEX']]['FACTOR'] = gains[index]
@@ -313,9 +322,11 @@ class CalSeqCalibrator(Calibrator):
                 try:
                     goHdu = fits.open(goFile)
                     h = goHdu[0].header
-                    scans.append((scan, h['PROCNAME'], os.path.split(filepath)[1]))
+                    scans.append(
+                        (scan, h['PROCNAME'], os.path.split(filepath)[1]))
                 except Exception:
-                    print "Could not find GO file, skipping #{}.".format(scan)
+                    # print "Could not find GO file, skipping #{}.".format(scan)
+                    pass
         return scans
 
     def _findMostRecentProcScans(self, procname, count=1):
