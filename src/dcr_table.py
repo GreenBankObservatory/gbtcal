@@ -120,8 +120,6 @@ class DcrTable(StrippedTable):
 
         # STATE describes the phases in use
         dcrStateTable = cls.getTableByName(dcrHdu, 'STATE')
-        # RECEIVER describes which DCR ports
-        dcrRcvrTable = cls.getTableByName(dcrHdu, 'RECEIVER')
         # DATA contains the actual data recorded by the DCR
         dcrDataTable = cls.getTableByName(dcrHdu, 'DATA')
 
@@ -141,12 +139,6 @@ class DcrTable(StrippedTable):
 
         # DCR data from IF table
         ifDcrDataTable = cls.getIfDataByBackend(ifHdu)
-
-        # Our port information is stored in the CHANNELID column of the
-        # RECEIVER table
-        # NOTE: These ports are 0-indexed, but in the IF FITS
-        # file they are 1-indexed
-        dcrPorts = dcrRcvrTable['CHANNELID']
 
         if len(numpy.unique(ifDcrDataTable['RECEIVER'])) != 1:
             raise ValueError("There must only be one RECEIVER per scan!")
@@ -197,7 +189,7 @@ class DcrTable(StrippedTable):
         # stacked together horizontally.
         filteredIfTable = hstack([filteredIfTable, expandedStateTable])
 
-        # Okay! We now have a table that maps physical attributes to the different
+        # We now have a table that maps physical attributes to the different
         # states in which data was taken. That is, for each feed we have rows
         # that map it to the various SIGREF and CAL states that were active at
         # some point during the scan.

@@ -113,7 +113,7 @@ class Calibrator(object):
         raw = data[mask]
         assert len(raw) == 1, \
             "There should only ever be one row of data for getRawPower"
-        return raw['DATA']
+        return numpy.array(raw['DATA'])
 
     def getFreqForData(self, data, feed, pol):
         """
@@ -129,8 +129,6 @@ class Calibrator(object):
         numUniqueFreqs = len(numpy.unique(data[mask]['CENTER_SKY']))
 
         if numUniqueFreqs != 1:
-            import ipdb
-            ipdb.set_trace()
             raise ValueError("Should be exactly one CENTER_SKY "
                              "for a given FEED and POLARIZE. "
                              "Got {} unique freq values."
@@ -148,7 +146,7 @@ class Calibrator(object):
         if doGain:
             self.findCalFactors(newTable)
 
-        return self.doMath(newTable, doGain, polOption, refBeam)[0]
+        return self.doMath(newTable, doGain, polOption, refBeam)
 
 
 class TraditionalCalibrator(Calibrator):
@@ -218,17 +216,12 @@ class TraditionalCalibrator(Calibrator):
         if onRow['FACTOR'] != offRow['FACTOR']:
             raise ValueError("TCAL of 'on' and 'off' data must be identical")
 
-        # TODO: This is probably a bug in the decode code...
-        # This is an array of a single array, so we extract the inner array
         onData = onRow['DATA'][0]
         offData = offRow['DATA'][0]
         # Doesn't matter which row we grab this from; they are identical
-        tCal = onRow['FACTOR']
+        tCal = onRow['FACTOR'][0]
         temp = self.getAntennaTemperature(onData, offData, tCal)
-        # Need to put this BACK into an array where the only element is
-        # the actual array
-        # TODO: This is sooooo dumb, plz fix
-        return numpy.array([temp])
+        return temp
 
 
 class CalSeqCalibrator(Calibrator):
@@ -268,7 +261,7 @@ class CalSeqCalibrator(Calibrator):
         # the actual array
         # TODO: This is sooooo dumb, plz fix
         calData = gain * (offData - numpy.median(offData))
-        return numpy.array([calData])
+        return calData
 
     def _getScanProcedures(self):
         """Return a list of each scan number and its procname"""
