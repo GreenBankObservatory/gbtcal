@@ -77,12 +77,12 @@ calOpts = {
         'refBeam': False
     },
     ('Raw', 'XL'): {
-        'polOption': 'X',
+        'polOption': 'X/L',
         'doGain': False,
         'refBeam': False
     },
     ('Raw', 'YR'): {
-        'polOption': 'Y',
+        'polOption': 'Y/R',
         'doGain': False,
         'refBeam': False
     },
@@ -92,14 +92,29 @@ calOpts = {
         'refBeam': False
     },
     ('TotalPower', 'XL'): {
-        'polOption': 'X',
+        'polOption': 'X/L',
         'doGain': True,
         'refBeam': False
     },
     ('TotalPower', 'YR'): {
-        'polOption': 'Y',
+        'polOption': 'Y/R',
         'doGain': True,
         'refBeam': False
+    },
+    ('DualBeam', 'XL'): {
+        'polOption': 'X/L',
+        'doGain': True,
+        'refBeam': True
+    },
+    ('DualBeam', 'YR'): {
+        'polOption': 'Y/R',
+        'doGain': True,
+        'refBeam': True
+    },
+    ('DualBeam', 'Avg'): {
+        'polOption': 'Both',
+        'doGain': True,
+        'refBeam': True
     }
 }
 
@@ -131,10 +146,10 @@ class TestAgainstSparrowResults(unittest.TestCase):
                                  **calOpts[calOption])
             expected = numpy.array(result)
             # TODO: ROUNDING??? WAT
-            if calOption[0] == 'Raw':
+            if calOption[0] == 'Raw' and calOption[1] == 'Avg':
                 actual = numpy.floor(actual)
 
-            self.assertTrue(numpy.all(actual == expected),
+            self.assertTrue(numpy.allclose(actual, expected),
                             "Test for {} failed: {} != {}"
                             .format(calOption,
                                     self.arraySummary(actual),

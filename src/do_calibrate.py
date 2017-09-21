@@ -1,3 +1,5 @@
+import numpy
+
 import calibrator
 from rcvr_table import ReceiverTable
 
@@ -10,6 +12,21 @@ def doCalibrate(receiver, receiverTable, ifDcrDataTable, **kwargs):
     except IndexError:
         raise ValueError("Receiver '{}' does not exist in the receiver table!"
                          .format(receiver))
+
+    polarizations = numpy.unique(ifDcrDataTable['POLARIZE'])
+    # import ipdb; ipdb.set_trace()
+    polOpt = kwargs['polOption']
+    print("polOpt: ", polOpt)
+    if polOpt == 'Both':
+        kwargs['polOption'] = 'Avg'
+    else:
+        if set(polarizations).issuperset(["X", "Y"]):
+            kwargs['polOption'] = polOpt.split("/")[0]
+        elif set(polarizations).issuperset(["L", "R"]):
+            kwargs['polOption'] = kwargs['polOption'].split("/")[1]
+        else:
+            raise ValueError(":(")
+
 
     try:
         calibratorClass = getattr(calibrator, calibratorStr)
