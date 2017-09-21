@@ -1,7 +1,9 @@
 import unittest
+import os
 
 from calibrator import (
     Calibrator,
+    KaCalibrator,
     TraditionalCalibrator,
     WBandCalibrator,
     ArgusCalibrator,
@@ -68,6 +70,36 @@ class TestCalibrator(unittest.TestCase):
         cal = TraditionalCalibrator(None, table)
         values = cal.calibrate()
 
+    def testKaCalibrator(self):
+        proj = "AGBT16A_085_06"
+        projPath = ("../test/data/%s" % proj)
+        scanNum = 55
+        rcvr = "Rcvr26_40"
+        fitsForScan = getFitsForScan(projPath, scanNum)
+        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
+
+        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+        table.meta['TRCKBEAM'] = trckBeam
+
+        cal = KaCalibrator(None, table)
+
+        # get the sparrow results
+        resultsFile = "%s:%s:%s" % (proj, scanNum, rcvr)
+        resultsPath = os.path.join("../test/results", resultsFile)
+        results = self.readResultsFile(resultsPath)
+
+        # test all combos of polarizations and cal. modes
+        pols = [('R', 'YR'), ('L', 'XL'), ('Both', 'Avg')]
+        # TBD: currently it looks like the expected results 
+        # for Raw are wrong!
+        # modes = [('Raw', False), ('TotalPower', True)]
+        modes = [('TotalPower', True)]
+        for mode, doGain in modes:
+            for pol, genPol in pols:
+                values = list(cal.calibrate(polOption=pol,
+                                            doGain=doGain))
+                expected = results[mode, genPol]
+                self.assertEquals(values, expected)
 
 # class TestDoCalibrate(unittest.TestCase):
 #     def setUp(self):

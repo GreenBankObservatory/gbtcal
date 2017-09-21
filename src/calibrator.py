@@ -123,7 +123,6 @@ class Calibrator(object):
             (data['FEED'] == feed) &
             (numpy.char.rstrip(data['POLARIZE']) == pol)
         )
-
         if len(numpy.unique(data[mask]['CENTER_SKY'])) != 1:
             raise ValueError("Should be only one CENTER_SKY "
                              "for a given FEED and POLARIZE")
@@ -185,7 +184,7 @@ class TraditionalCalibrator(Calibrator):
         Ta = 0.5 * (calOnData + calOffData) / countsPerKelvin - 0.5 * tCal
         return Ta
 
-    def calibrateTotalPower(self, data, feed, pol, freq):
+    def calibrateTotalPower(self, data, feed, pol, freq, refPhase=False):
         # NOTE: This is AGNOSTIC to SIGREF. That is, it cares only about CAL
 
         mask = (
@@ -197,8 +196,17 @@ class TraditionalCalibrator(Calibrator):
         )
 
         dataToCalibrate = data[mask]
-        onMask = dataToCalibrate['CAL'] == 1
-        offMask = dataToCalibrate['CAL'] == 0
+
+        ref = 1 if refPhase else 0
+
+        onMask = (
+            (dataToCalibrate['CAL'] == 1) &
+            (dataToCalibrate['SIGREF'] == ref)
+        )
+        offMask = (
+            (dataToCalibrate['CAL'] == 0) &
+            (dataToCalibrate['SIGREF'] == ref)
+        )
 
         onRow = dataToCalibrate[onMask]
         offRow = dataToCalibrate[offMask]
@@ -221,6 +229,35 @@ class TraditionalCalibrator(Calibrator):
         # the actual array
         # TODO: This is sooooo dumb, plz fix
         return numpy.array([temp])
+
+
+class KaCalibrator(TraditionalCalibrator):
+
+    """
+    The Ka receiver (Rcvr26_40) only has one polarization per feed:
+    feed 1: YR; feed 2: XL
+    Also, instead of DualBeam polarization, we use BeamSwitchedTBOnly
+    """
+
+    def __init__(self, receiverInfoTable, ifDcrDataTable):
+        super(KaCalibrator, self).__init__(receiverInfoTable,
+                                           ifDcrDataTable)
+        self.kaBeamMap = {1: 'R', 2: 'L'}
+        self.kaPolMap = {'R': 1, 'L': 2}
+
+    def calibrateTotalPower(self, data, feed, pol, freq):
+        "Calibrate the total power, but only for valid polarization"
+        # pol = self.kaBeamMap[feed]
+        feed = self.kaPolMap[pol]
+        return super(KaCalibrator, self).calibrateTotalPower(data,
+                                                             feed,
+                                                             pol,
+                                                             freq)
+
+    def getFreqForData(self, data, feed, pol):
+        # pol = self.kaBeamMap[feed]
+        feed = self.kaPolMap[pol]
+        return super(KaCalibrator, self).getFreqForData(data, feed, pol)
 
 
 class CalSeqCalibrator(Calibrator):
