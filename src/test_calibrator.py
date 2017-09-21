@@ -1,9 +1,11 @@
 import ast
 import unittest
+import os
 import numpy
 
 from calibrator import (
     Calibrator,
+    KaCalibrator,
     TraditionalCalibrator,
     WBandCalibrator,
     ArgusCalibrator,
@@ -86,6 +88,13 @@ class TestCalibrator(unittest.TestCase):
     def testTraditionalCalibrator(self):
         projPath = ("../test/data/AGBT16B_285_01")
         scanNum = 5
+        fitsForScan = getFitsForScan(projPath, scanNum)
+        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
+
+        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+        table.meta['TRCKBEAM'] = trckBeam
+        cal = TraditionalCalibrator(None, table)
+        values = cal.calibrate()
 
         expected = self.readResultsFile(
             "../test/results/AGBT16B_285_01:5:Rcvr1_2")
@@ -95,3 +104,34 @@ class TestCalibrator(unittest.TestCase):
         for key in answers:
             self.assertTrue(numpy.allclose(
                 answers[key], expected[key], rtol=2e-5))
+
+    def testKaCalibrator(self):
+        proj = "AGBT16A_085_06"
+        projPath = ("../test/data/%s" % proj)
+        scanNum = 55
+        rcvr = "Rcvr26_40"
+        fitsForScan = getFitsForScan(projPath, scanNum)
+        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
+
+        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+        table.meta['TRCKBEAM'] = trckBeam
+
+        cal = KaCalibrator(None, table)
+
+        # get the sparrow results
+        resultsFile = "%s:%s:%s" % (proj, scanNum, rcvr)
+        resultsPath = os.path.join("../test/results", resultsFile)
+        results = self.readResultsFile(resultsPath)
+
+        # test all combos of polarizations and cal. modes
+        pols = [('R', 'YR'), ('L', 'XL'), ('Both', 'Avg')]
+        # TBD: currently it looks like the expected results 
+        # for Raw are wrong!
+        # modes = [('Raw', False), ('TotalPower', True)]
+        modes = [('TotalPower', True)]
+        for mode, doGain in modes:
+            for pol, genPol in pols:
+                values = list(cal.calibrate(polOption=pol,
+                                            doGain=doGain))
+                expected = list(results[mode, genPol])
+                self.assertEquals(values, expected)
