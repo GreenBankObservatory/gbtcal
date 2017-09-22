@@ -221,7 +221,8 @@ def getDcrDataDescriptors(data):
 
 
 def decode(projPath, scanNum):
-    """Given a project path and a scan number, return the "decoded"
+    """
+    Given a project path and a scan number, return the "decoded"
     data as a DcrTable instance.
     """
     fitsForScan = getFitsForScan(projPath, scanNum)

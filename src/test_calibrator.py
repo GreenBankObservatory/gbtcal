@@ -11,7 +11,7 @@ from calibrator import (
     ArgusCalibrator,
 )
 from do_calibrate import doCalibrate
-from dcr_decode import decode, getFitsForScan, getAntennaTrackBeam
+from dcr_decode import decode
 from rcvr_table import ReceiverTable
 from dcr_table import DcrTable
 
@@ -24,11 +24,8 @@ class TestCalibrator(unittest.TestCase):
         options. If "refBeam" is not specified, we assume that this receiver
         CAN'T do dual beam calibration, so we just do Raw and TotalPower.
         """
-        fitsForScan = getFitsForScan(projPath, scanNum)
-        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
+        table = decode(projPath, scanNum)
 
-        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
-        table.meta['TRCKBEAM'] = trckBeam
         cal = calCls(None, table)
 
         results = {}
@@ -88,13 +85,6 @@ class TestCalibrator(unittest.TestCase):
     def testTraditionalCalibrator(self):
         projPath = ("../test/data/AGBT16B_285_01")
         scanNum = 5
-        fitsForScan = getFitsForScan(projPath, scanNum)
-        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
-
-        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
-        table.meta['TRCKBEAM'] = trckBeam
-        cal = TraditionalCalibrator(None, table)
-        values = cal.calibrate()
 
         expected = self.readResultsFile(
             "../test/results/AGBT16B_285_01:5:Rcvr1_2")
@@ -110,11 +100,8 @@ class TestCalibrator(unittest.TestCase):
         projPath = ("../test/data/%s" % proj)
         scanNum = 55
         rcvr = "Rcvr26_40"
-        fitsForScan = getFitsForScan(projPath, scanNum)
-        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
 
-        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
-        table.meta['TRCKBEAM'] = trckBeam
+        table = decode(projPath, scanNum)
 
         cal = KaCalibrator(None, table)
 
