@@ -14,3 +14,9 @@ for rcvr in $rcvrs; do
         getScanFromProject "$projPath" "$scan" "$rcvr" -o "./data"
     fi
 done
+
+for rcvr in $rcvrs; do cp $(find /home/scratch/pmargani/allCalDcrData -size +1024 -name "*$rcvr*" -type f -print -quit) . ; done
+
+
+for d in AGBT*;
+    do echo "$d" "$d:$(basename "$(find "$d" -name "Rcvr*")"):$(awk '{print $4}' < "$d"/README)"; done
