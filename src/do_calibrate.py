@@ -2,10 +2,10 @@ import numpy
 
 import calibrator
 from rcvr_table import ReceiverTable
+from constants import POLOPTS
 
 
 def doCalibrate(receiver, receiverTable, ifDcrDataTable, **kwargs):
-    print("Calibrating {}".format(receiver))
     receiverRow = receiverTable.getReceiverInfo(receiver)
     try:
         calibratorStr = receiverRow['Calibration Strategy'][0]
@@ -14,11 +14,9 @@ def doCalibrate(receiver, receiverTable, ifDcrDataTable, **kwargs):
                          .format(receiver))
 
     polarizations = numpy.unique(ifDcrDataTable['POLARIZE'])
-    # import ipdb; ipdb.set_trace()
     polOpt = kwargs['polOption']
-    print("polOpt: ", polOpt)
-    if polOpt == 'Both':
-        kwargs['polOption'] = 'Avg'
+    if polOpt == POLOPTS.AVG:
+        kwargs['polOption'] = POLOPTS.AVG
     else:
         if set(polarizations).issuperset(["X", "Y"]):
             kwargs['polOption'] = polOpt.split("/")[0]
@@ -26,7 +24,6 @@ def doCalibrate(receiver, receiverTable, ifDcrDataTable, **kwargs):
             kwargs['polOption'] = kwargs['polOption'].split("/")[1]
         else:
             raise ValueError(":(")
-
 
     try:
         calibratorClass = getattr(calibrator, calibratorStr)

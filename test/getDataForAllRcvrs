@@ -1,22 +1,65 @@
 #!/bin/bash
-rcvrs="Rcvr1_2 Rcvr2_3 Rcvr4_6 Rcvr8_10 Rcvr12_18 RcvrArray18_26 Rcvr26_40 Rcvr40_52 Rcvr68_92 RcvrArray75_115"
+# rcvrs="Rcvr1_2 Rcvr2_3 Rcvr4_6 Rcvr8_10 Rcvr12_18 RcvrArray18_26 Rcvr26_40 Rcvr40_52 Rcvr68_92 RcvrArray75_115"
+rcvrs="Rcvr26_40"
+
+
+# findData() {
+#     path=$(find /home/gbtdata/A* /home/archive/science-data/{17B,17A,16B,16A}/A* -maxdepth 1 -name "$rcvr" -type d -print -quit)
+#     if [ -z "$path" ]; then
+#         return 1
+#     fi
+
+
+#     return 0
+# }
+
+
+
+# for result in $resultPaths; do
+#     path=$(find /home/gbtdata/A* /home/archive/science-data/**/A* -maxdepth 1 -name "$rcvr" -type d -print -quit)
+
+# done
 
 
 for rcvr in $rcvrs; do
-    echo "Finding project for $rcvr..."
-    path=$(find /home/gbtdata/A* /home/archive/science-data/{17B,17A,16B,16A}/A* -maxdepth 1 -name "$rcvr" -type d -print -quit)
-    if [ -z "$path" ]; then
-        echo "...not found!"
-    else
-        echo "...found: $path"
-        projPath=$(dirname "$path")
-        scan=5
-        getScanFromProject "$projPath" "$scan" "$rcvr" -o "./data"
-    fi
+    echo "rcvr: '$rcvr'"
+    resultPaths=$(find /home/scratch/pmargani/allCalDcrData -size +64c -name "*$rcvr*" -type f | tac)
+    echo "$resultPaths" | head
+    for result in $resultPaths; do
+        echo "Finding project $project for ${rcvr}..."
+        project=$(basename "$result" | cut -d':' -f1)
+        path=$(find /home/gbtdata /home/archive/science-data/{17B,17A,16B,16A} -maxdepth 1 -name "$project" -type d -print -quit)
+        if [ -n "$path" ]; then
+            projPath="$(dirname "$result")/$project"
+            scan=$(basename "$result" | cut -d':' -f2)
+            getScanFromProject.py "$projPath" "$scan" "$rcvr" -o "./data"
+        fi
+    done
+
+
+    # path=$(find /home/gbtdata/A* /home/archive/science-data/{17B,17A,16B,16A}/A* -maxdepth 1 -name "$rcvr" -type d -print -quit)
+    # if [ -z "$path" ]; then
+    #     echo "...not found!"
+    # else
+    #     echo "...found: $path"
+    #     # projPath=$(dirname "$path")
+    #     # scan=5
+    #     # getScanFromProject.py "$projPath" "$scan" "$rcvr" # -o "./data"
+
+
+    #     # cp $(find /home/scratch/pmargani/allCalDcrData -size +1024 -name "*$rcvr*" -type f -print -quit) .
+    #     result=$(find /home/scratch/pmargani/allCalDcrData -size +1024 -name "$proj:*:$rcvr" -type f -print -quit)
+    #     echo "RESULT FOR $rcvr: $result"
+    # fi
+
+
 done
 
-for rcvr in $rcvrs; do cp $(find /home/scratch/pmargani/allCalDcrData -size +1024 -name "*$rcvr*" -type f -print -quit) . ; done
+# for rcvr in $rcvrs; do
+
+# done
 
 
-for d in AGBT*;
-    do echo "$d" "$d:$(basename "$(find "$d" -name "Rcvr*")"):$(awk '{print $4}' < "$d"/README)"; done
+# for d in AGBT*;
+#     do echo "$d" "$d:$(basename "$(find "$d" -name "Rcvr*")"):$(awk '{print $4}' < "$d"/README)"
+# done

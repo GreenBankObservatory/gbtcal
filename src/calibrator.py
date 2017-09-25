@@ -7,11 +7,10 @@ from astropy.table import Column
 from dcr_decode import getFitsForScan, getTcal, getRcvrCalTable
 from CalibrationResults import CalibrationResults
 from ArgusCalibration import ArgusCalibration
-
+from constants import POLS, POLOPTS
+from util import wprint
 
 class Calibrator(object):
-    POLARIZATIONS = ('X', 'Y', 'L', 'R')
-
     def __init__(self, receiverInfoTable, ifDcrDataTable):
         self._receiverInfoTable = receiverInfoTable
         self._ifDcrDataTable = ifDcrDataTable
@@ -36,20 +35,24 @@ class Calibrator(object):
         allPols = numpy.unique(data['POLARIZE'])
         allPols = allPols.tolist()
 
-        if polOption == 'Avg':
+        validPols = [POLS.isValid(pol) for pol in allPols]
+        if not all(validPols):
+            raise ValueError("Invalid/Unsupported polarizations detected. "
+                             "{} are not in {}"
+                             .format([pol for pol in allPols
+                                      if not POLS.isValid(pol)],
+                                      POLS.all()))
+
+        if polOption == POLOPTS.AVG:
             pols = allPols
         else:
             pols = [polOption]
 
         trackBeam = data.meta['TRCKBEAM']
 
-        print("TRACK BEAM:", trackBeam)
-
         feeds = numpy.unique(data['FEED'])
 
         if trackBeam not in feeds:
-            # TODO: RAISE ERROR
-            # TrackBeam must be wrong?
             # WTF!  How to know which feed to use for raw & tp?
             # we've experimented and shown that there's no happy ending here.
             # so just bail.
@@ -68,6 +71,10 @@ class Calibrator(object):
             for pol in pols:
                 freq = self.getFreqForData(data, feed, pol)
                 if doGain:
+                    # TODO: This logic seems naughty... Calibrator shouldn't
+                    # have any specific knowledge about its children. Though
+                    # perhaps this is generic enough that it could be made
+                    # top level? That would work...
                     powerPol = self.calibrateTotalPower(data, feed, pol, freq)
                 else:
                     powerPol = self.getRawPower(data, feed, pol, freq)
@@ -99,7 +106,6 @@ class Calibrator(object):
 
     def getRawPower(self, data, feed, pol, freq):
         """Simply get the raw power, for the right phase"""
-        print("getRawPower", feed, pol, freq)
         phases = numpy.unique(data['SIGREF', 'CAL'])
         phase = (0, 0) if len(phases) > 1 else phases[0]
 
@@ -123,6 +129,11 @@ class Calibrator(object):
         """
         # TODO: REMOVE FROM CLASS?
 
+        if not POLS.isValid(pol):
+            raise ValueError("Given polarization '{}' is invalid. Valid "
+                             "polarizations are: {}"
+                             .format(pol, POLS.all()))
+
         mask = (
             (data['FEED'] == feed) &
             (data['POLARIZE'] == pol)
@@ -138,7 +149,8 @@ class Calibrator(object):
 
         return data[mask]['CENTER_SKY'][0]
 
-    def calibrate(self, polOption='Both', doGain=True, refBeam=False):
+    def calibrate(self, polOption=POLOPTS.AVG,
+                  doGain=True, refBeam=False):
         newTable = self.ifDcrDataTable.copy()
 
         newTable.add_column(
@@ -153,8 +165,6 @@ class Calibrator(object):
 
 class TraditionalCalibrator(Calibrator):
     def findCalFactors(self, data):
-        print("Looking at tCals and stuff")
-
         receiver = data.meta['RECEIVER']
 
         fitsForScan = getFitsForScan(self.projPath, self.scanNum)
@@ -266,14 +276,13 @@ class KaCalibrator(TraditionalCalibrator):
 
 class CalSeqCalibrator(Calibrator):
     def findCalFactors(self, data):
-        print("Finding cal factors for Cal Seq situation")
         # This is defined in the subclasses
         gains = self.getGains()
         if gains is None:
             # We didn't find the gains, so we want to keep FACTOR values 1.0
-            print("Could not find gain values. Setting all gains to 1.0")
+            wprint("Could not find gain values. Setting all gains to 1.0")
             return
-        print("Gains are:", gains)
+
         for row in data:
             index = str(row['FEED']) + row['POLARIZE']
             data[row['INDEX']]['FACTOR'] = gains[index]
@@ -373,7 +382,3 @@ class ArgusCalibrator(CalSeqCalibrator):
             )
             return cal.getGain()
         return None
-
-
-class InvalidCalibrator(Calibrator):
-    pass
