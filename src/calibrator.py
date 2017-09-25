@@ -10,6 +10,8 @@ from ArgusCalibration import ArgusCalibration
 
 
 class Calibrator(object):
+    POLARIZATIONS = ('X', 'Y', 'L', 'R')
+
     def __init__(self, receiverInfoTable, ifDcrDataTable):
         self._receiverInfoTable = receiverInfoTable
         self._ifDcrDataTable = ifDcrDataTable
@@ -32,9 +34,9 @@ class Calibrator(object):
         """Set up the calculations for all calibration types."""
         # handle single pols, or averages
         allPols = numpy.unique(data['POLARIZE'])
-        allPols = numpy.char.rstrip(allPols).tolist()
+        allPols = allPols.tolist()
 
-        if polOption == 'Both':
+        if polOption == 'Avg':
             pols = allPols
         else:
             pols = [polOption]
@@ -107,7 +109,7 @@ class Calibrator(object):
             (data['SIGREF'] == sigref) &
             (data['CAL'] == cal) &
             (data['CENTER_SKY'] == freq) &
-            (numpy.char.rstrip(data['POLARIZE']) == pol)
+            (data['POLARIZE'] == pol)
         )
 
         raw = data[mask]
@@ -123,7 +125,7 @@ class Calibrator(object):
 
         mask = (
             (data['FEED'] == feed) &
-            (numpy.char.rstrip(data['POLARIZE']) == pol)
+            (data['POLARIZE'] == pol)
         )
 
         numUniqueFreqs = len(numpy.unique(data[mask]['CENTER_SKY']))
