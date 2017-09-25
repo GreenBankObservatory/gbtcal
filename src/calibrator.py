@@ -1,24 +1,20 @@
 import os
-import numpy
 
+import numpy
 from astropy.io import fits
 from astropy.table import Column
 
 from dcr_decode import getFitsForScan, getTcal, getRcvrCalTable
+
 from CalibrationResults import CalibrationResults
 from ArgusCalibration import ArgusCalibration
 
 
 class Calibrator(object):
-    def __init__(self, receiverInfoTable, ifDcrDataTable):
-        self._receiverInfoTable = receiverInfoTable
+    def __init__(self, ifDcrDataTable):
         self._ifDcrDataTable = ifDcrDataTable
         self.projPath = ifDcrDataTable.meta['PROJPATH']
         self.scanNum = ifDcrDataTable.meta['SCAN']
-
-    @property
-    def receiverInfoTable(self):
-        return self._receiverInfoTable
 
     @property
     def ifDcrDataTable(self):
@@ -241,9 +237,8 @@ class KaCalibrator(TraditionalCalibrator):
     Also, instead of DualBeam polarization, we use BeamSwitchedTBOnly
     """
 
-    def __init__(self, receiverInfoTable, ifDcrDataTable):
-        super(KaCalibrator, self).__init__(receiverInfoTable,
-                                           ifDcrDataTable)
+    def __init__(self, ifDcrDataTable):
+        super(KaCalibrator, self).__init__(ifDcrDataTable)
         self.kaBeamMap = {1: 'R', 2: 'L'}
         self.kaPolMap = {'R': 1, 'L': 2}
 

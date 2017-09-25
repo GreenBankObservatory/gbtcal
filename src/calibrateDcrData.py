@@ -5,18 +5,11 @@ from calibrator import TraditionalCalibrator, WBandCalibrator, ArgusCalibrator, 
 
 def calibrateDcrData(projPath, scanNum, calMode, polMode):
     rcvrTable = ReceiverTable.load("rcvrTable.csv")
-    
+
     table = decode(projPath, scanNum)
     receiver = table.meta['RECEIVER']
 
     mask = rcvrTable['M&C Name'] == receiver
-
-    acceptableCalModes = rcvrTable.meta['calibrationOptions'].values()
-    acceptablePolModes = rcvrTable.meta['calibrationOptions'].values()
-
-    if calMode not in rcvrTable.meta['calibrationOptions'].values():
-        raise ValueError("calMode {} is invalid. Must be one of {}"
-                         .format(calMode, ))
 
     rcvrRows = rcvrTable[mask]
 
@@ -25,11 +18,34 @@ def calibrateDcrData(projPath, scanNum, calMode, polMode):
                          "Table for receiver {}".format(receiver))
 
     rcvrRow = rcvrRows[0]
+
+    validateOptions(rcvrRow, calMode, polMode)
+
     calClass = eval(rcvrRow['Calibration Strategy'])
 
-    import ipdb; ipdb.set_trace()
-
     doGain = calMode != "Raw"
+    refBeam = calMode == "DualBeam"
+
+    calibrator = calClass(table)
+
+    result = calibrator.calibrate(
+        polOption=polMode,
+        doGain=doGain,
+        refBeam=refBeam
+    )
+
+    return result
+
+
+def validateOptions(rcvrRow, calMode, polMode):
+    calOptions = rcvrRow['Calibration Options']
+    polOptions = rcvrRow['Polarization Options']
+    if calMode not in calOptions:
+        raise ValueError("calMode '{}' is invalid. Must be one of {}"
+                          .format(calMode, calOptions))
+    if polMode not in polOptions:
+        raise ValueError("polMode '{}' is invalid. Must be one of {}"
+                          .format(polMode, polOptions))
 
 
 if __name__=="__main__":
