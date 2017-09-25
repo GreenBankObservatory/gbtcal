@@ -25,7 +25,7 @@ Rcvr4_6 C 1 2 TraditionalCalibrator 1
 Rcvr8_10 X 1 2 TraditionalCalibrator 1
 Rcvr12_18 Ku 2 2 TraditionalCalibrator 2
 RcvrArray18_26 KFPA 7 2 TraditionalCalibrator 2
-Rcvr26_40 Ka 2 1 TraditionalCalibrator 2
+Rcvr26_40 Ka 2 1 KaCalibrator 2
 Rcvr40_52 Q 2 2 TraditionalCalibrator 1
 Rcvr68_92 W 2 2 WBandCalibrator 2
 RcvrArray75_115 Argus 16 1 ArgusCalibrator 2
