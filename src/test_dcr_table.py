@@ -21,6 +21,7 @@ RCVRS = [
     'RcvrArray75_115'
 ]
 
+
 def getFitsForScan(projPath, scanNum):
     """Given a project path and a scan number, return the a dict mapping
     manager name to the manager's FITS file (as an HDUList) for that scan"""

@@ -61,9 +61,9 @@ def scanRegressionTest(projPath,
         if not numpy.all(table[mask]['DATA'].data == value):
             raise ValueError("Results do not match!",
                              {
-                                'oldData': [value[0], value[-1]],
-                                'newData': table[mask]['DATA'],
-                                'allNewData': table['DATA']
+                                 'oldData': [value[0], value[-1]],
+                                 'newData': table[mask]['DATA'],
+                                 'allNewData': table['DATA']
                              })
 
 
@@ -120,7 +120,7 @@ def testProcessDcrData(sparrow_results_dir, results_manifest):
                 except IOError as e:
                     eprint(e)
                     eprint("Could not find sparrow results file {}"
-                          .format(sparrow_results_file))
+                           .format(sparrow_results_file))
                     break
 
                 print("projPath: {}\n"
@@ -142,7 +142,7 @@ def testProcessDcrData(sparrow_results_dir, results_manifest):
                 except Exception as e:
                     eprint(traceback.format_exc(e))
                     eprint("Something went wrong for project {}"
-                          .format(projName))
+                           .format(projName))
                 else:
                     print("Results for sparrow file '{}' MATCH results "
                           "for new method!"

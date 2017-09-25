@@ -41,7 +41,6 @@ class ReceiverTable(Table):
         return [table.meta['calibrationAbbreviations'][calOptName]
                 for calOptName in calOpts]
 
-
     @staticmethod
     def _derivePolarizationOptions(table, receiver):
         receiverRow = table.getReceiverInfo(receiver)

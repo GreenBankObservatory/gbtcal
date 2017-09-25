@@ -48,62 +48,6 @@ class CalibrationResults:
         self.Tsys_data = {}  # array Tsys
         self.calData = ()    # scan metadata and gain/Tsys data in tuple
 
-###### Getters: ######
-    def getFirstScan(self):
-        """ Returns first scan number in calibration scan sequence """
-        return self.firstscan
-
-    def getScannums(self):
-        """ Returns list of scan numbers in the calibration sequence set """
-        return self.scannums
-
-    def getBackend(self):
-        """ Returns backend used in calibration scan sequence """
-        return self.backend
-
-    def getTwarm(self):
-        """ Returns averaged Twarm for COLD1 and COLD2 scans """
-        return self.Twarm
-
-    def getTcold(self):
-        """ Returns averaged Tcold for COLD1 and COLD2 scans """
-        return self.Tcold
-
-    def getGain(self):
-        """ Returns gain dictionary:
-            key:    channel name, e.g. '1X', '2Y'
-            value:  gain (scalar; median value of gain array) """
-        return self.gain
-
-    def getGainData(self):
-        """ Returns gain dictionary:
-            key:    channel name, e.g. '1X', '2Y'
-            value:  gain array """
-        return self.gain_data
-
-    def getTsys(self):
-        """ Returns Tsys dictionary:
-            key:   channel name + sky observing position, e.g. '1X, Observing'
-            value: Tsys (scalar; median value of Tsys array """
-        return self.Tsys
-
-    def getTsysData(self):
-        """ Returns Tsys dictionary:
-            key:   channel name + sky observing position, e.g. '1X, Observing'
-            value: Tsys array """
-        return self.Tsys_data
-
-    def getCalData(self):
-        """ Get scan metadata, gain dict, and tsys dict in tuple form """
-        return self.calData
-
-    def isComplete(self):
-        """ Returns bool to indicate if processing is complete """
-        return self.calibrated
-
-##########################
-
-
     def getScanIndexOfObservation(self, projPath, scanNum):
 
         go = self.getGOFits(projPath, scanNum)
@@ -121,7 +65,8 @@ class CalibrationResults:
             if "SCAN" not in filePath:
                 _, _, manager, scanName = filePath.split("/")
 
-                # we actually only care about these - no point in raising an error
+                # we actually only care about these -
+                # no point in raising an error
                 # if something like the GO FITS file can't be found.
                 if manager == "GO":
                     fitsPath = os.path.join(projPath, manager, scanName)
@@ -155,7 +100,7 @@ class CalibrationResults:
         if haveAllScans:
             print "haveAllScans!"
             self.calcGainTsys()
-            self.saveData(projectName, self.backend, self.getGain(), self.getTsys())
+            self.saveData(projectName, self.backend, self.gain, self.Tsys)
         else:
             print "Incomplete calibration sequence"
 
@@ -171,8 +116,6 @@ class CalibrationResults:
                     scanProcseqn = self.scannums.index(scannum) + 1
                     self.addScan(scannum, project, scanProcseqn, procsize)
 
-        # Check for complete set
-        # print "Scan numbers in calibration sequence:", sorted(self.scans.keys())
         return len(self.scans) == len(self.scannums)
 
     def determineScans(self, scannum, procseqn, procsize):
@@ -197,10 +140,12 @@ class CalibrationResults:
         """Does this scan fit into sequence correctly?"""
         scanOkay = True
         # Check PROCSCAN
-        if not scan.isCalSeqScan(): scanOkay = False
+        if not scan.isCalSeqScan():
+            scanOkay = False
         # Check PROCSEQN and PROCSIZE
         seqn, size = scan.getScanIndexOfObservation()
-        if (seqn != expectedSeqn) or (size != expectedSize):  scanOkay = False
+        if seqn != expectedSeqn or size != expectedSize:
+            scanOkay = False
         return scanOkay
 
     def getCalSeqData(self):
@@ -233,11 +178,11 @@ class CalibrationResults:
             if "Cold" in calSeqScan.getCalPos():
                 twarm.append(numpy.float64(calSeqScan.getTwarm()))
                 tcold.append(numpy.float64(calSeqScan.getTcold()))
-           
+
             # assemble channel scan data for all CalSeq scans in one dictionary
             for channel in calSeqScan.getChannels():
                 if isinstance(scanData[channel], list):
-                    # auto mode makes list with all channel data in it (in one scan);
+                    # auto mode makes list with all channel data in it
                     calSeqData[channel] = scanData[channel]
                 else:
                     # manual mode makes tuple for each channel for each scan
@@ -257,15 +202,15 @@ class CalibrationResults:
         Save in self.gain and self.Tsys dicts
         """
         calSeqData = self.getCalSeqData()
-        
+
         for channel in calSeqData.keys():
             channelData = {}
             for data in calSeqData[channel]:
                 channelData[data[0]] = data[1]
 
             # Calculate gain
-            twarm = self.getTwarm()
-            tcold = self.getTcold()
+            twarm = self.Twarm
+            tcold = self.Tcold
             try:
                 vwarm = numpy.median(channelData['Vwarm'])
                 vcold = numpy.median(channelData['Vcold'])
@@ -288,7 +233,7 @@ class CalibrationResults:
                     pass
         self.calibrated = True
 
-    def saveData(self, projectName, backend, gains, Tsys):   
+    def saveData(self, projectName, backend, gains, Tsys):
         """
         Save this data in dict for retrieval from GFM.
         Also save data in text file for AutoOOF processing.
@@ -297,7 +242,7 @@ class CalibrationResults:
         scanInfo = {}
         scanInfo['project'] = projectName
         scanInfo['backend'] = backend
-        scanInfo['scans'] = self.getScannums()
+        scanInfo['scans'] = self.scannums
         self.calData = (scanInfo, gains, Tsys)
         self.saveTextFile(self.calData)
 
@@ -312,9 +257,10 @@ class CalibrationResults:
         # add keys for gain and tsys for easier readout
         data[0]['gain'] = data[1]
         data[0]['tsys'] = data[2]
-        datafile = open(path, 'w')
-        datafile.write(str(data[0]))
-        datafile.close()
+
+        with open(path, 'w') as datafile:
+            datafile.write(str(data[0]))
+
 
 if __name__ == "__main__":
     projPath = "/home/gbtdata/AGBT16B_288_03"

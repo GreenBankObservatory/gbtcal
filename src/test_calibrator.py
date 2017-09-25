@@ -1,16 +1,18 @@
 import ast
 import unittest
+import os
 
 import numpy
 
 from calibrator import (
     Calibrator,
+    KaCalibrator,
     TraditionalCalibrator,
     WBandCalibrator,
     ArgusCalibrator,
 )
 from do_calibrate import doCalibrate
-from dcr_decode import decode
+from dcr_decode import decode, getFitsForScan, getAntennaTrackBeam
 from rcvr_table import ReceiverTable
 from dcr_table import DcrTable
 
@@ -21,7 +23,38 @@ def readResultsFile(filepath):
 
 class TestCalibrator(unittest.TestCase):
 
+    def generateAllCalibrations(self, calCls, projPath, scanNum, refBeam=None):
+        """
+        This function calibrates a data set using all possible calibration
+        options. If "refBeam" is not specified, we assume that this receiver
+        CAN'T do dual beam calibration, so we just do Raw and TotalPower.
+        """
+        fitsForScan = getFitsForScan(projPath, scanNum)
+        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
 
+        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+        table.meta['TRCKBEAM'] = trckBeam
+        cal = calCls(None, table)
+
+        results = {}
+
+        # Get the three "Raw" options, no gain processing.
+        results['Raw', 'Avg'] = cal.calibrate(doGain=False)
+        results['Raw', 'XL'] = cal.calibrate(doGain=False, polOption="X")
+        results['Raw', 'YR'] = cal.calibrate(doGain=False, polOption="Y")
+        # Get the three "TotalPower" options, which do use gain.
+        results['TotalPower', 'Avg'] = cal.calibrate()
+        results['TotalPower', 'XL'] = cal.calibrate(polOption="X")
+        results['TotalPower', 'YR'] = cal.calibrate(polOption="Y")
+        if refBeam:
+            # Get the three DualBeam options
+            results['DualBeam', 'Avg'] = cal.calibrate(refBeam=refBeam)
+            results['DualBeam', 'XL'] = cal.calibrate(
+                refBeam=refBeam, polOption="X")
+            results['DualBeam', 'YR'] = cal.calibrate(
+                refBeam=refBeam, polOption="Y")
+
+        return results
 
     def testCalibrator(self):
         projPath = ("../test/data/AGBT16B_285_01")
@@ -40,6 +73,8 @@ class TestCalibrator(unittest.TestCase):
 
         results = readResultsFile("../test/results/AVLB17A_182_04:2:Rcvr68_92")
         expected = results["TotalPower", "Avg"]
+        answers = self.generateAllCalibrations(
+            WBandCalibrator, projPath, scanNum, refBeam=2)
 
         self.assertEquals(values, expected)
 
@@ -54,21 +89,46 @@ class TestCalibrator(unittest.TestCase):
     def testTraditionalCalibrator(self):
         projPath = ("../test/data/AGBT16B_285_01")
         scanNum = 5
-        table = decode(projPath, scanNum)
-        cal = TraditionalCalibrator(None, table)
-        values = cal.calibrate()
+        expected = readResultsFile(
+            "../test/results/AGBT16B_285_01:5:Rcvr1_2")
+        answers = self.generateAllCalibrations(
+            TraditionalCalibrator, projPath, scanNum)
 
+        for key in answers:
+            self.assertTrue(numpy.allclose(
+                answers[key], expected[key], rtol=2e-5))
 
-class TestRcvrPF_1(TestCalibrator):
-    pass
+    def testKaCalibrator(self):
+        proj = "AGBT16A_085_06"
+        projPath = ("../test/data/%s" % proj)
+        scanNum = 55
+        rcvr = "Rcvr26_40"
+        fitsForScan = getFitsForScan(projPath, scanNum)
+        trckBeam = getAntennaTrackBeam(fitsForScan['Antenna'])
 
+        table = DcrTable.read(fitsForScan['DCR'], fitsForScan['IF'])
+        table.meta['TRCKBEAM'] = trckBeam
 
-class TestRcvrPF_2(TestCalibrator):
-    pass
+        cal = KaCalibrator(None, table)
 
+        # get the sparrow results
+        resultsFile = "%s:%s:%s" % (proj, scanNum, rcvr)
+        resultsPath = os.path.join("../test/results", resultsFile)
+        results = readResultsFile(resultsPath)
 
-class TestRcvrArray1_2(TestCalibrator):
-    pass
+        # test all combos of polarizations and cal. modes
+        pols = [('R', 'YR'), ('L', 'XL'), ('Both', 'Avg')]
+        # TBD: currently it looks like the expected results
+        # for Raw are wrong!
+        # modes = [('Raw', False), ('TotalPower', True)]
+        modes = [('TotalPower', True)]
+        for mode, doGain in modes:
+            for pol, genPol in pols:
+                values = list(cal.calibrate(polOption=pol,
+                                            doGain=doGain))
+                expected = list(results[mode, genPol])
+                self.assertEquals(values, expected)
+
 
 calOpts = {
     ('Raw', 'Avg'): {
@@ -175,69 +235,3 @@ class TestAgainstSparrowResults(unittest.TestCase):
 
 
 
-
-
-
-
-
-
-class TestRcvr2_3(TestCalibrator):
-    pass
-
-
-class TestRcvr4_6(TestCalibrator):
-    pass
-
-
-class TestRcvr8_10(TestCalibrator):
-    pass
-
-
-class TestRcvr12_18(TestCalibrator):
-    pass
-
-
-class TestRcvrArray18_26(TestCalibrator):
-    pass
-
-
-class TestRcvr18_26(TestCalibrator):
-    pass
-
-
-class TestRcvr26_40(TestCalibrator):
-    pass
-
-
-class TestRcvr40_52(TestCalibrator):
-    pass
-
-
-class TestRcvr68_92(TestCalibrator):
-    pass
-
-
-class TestRcvrArray75_115(TestCalibrator):
-    pass
-
-
-
-
-
-# class TestDoCalibrate(unittest.TestCase):
-#     def setUp(self):
-#         self.receiverTable = ReceiverTable.load('rcvrTable.test.csv')
-
-#     # def testRcvr1_2(self):
-#     #     projPath =
-#     #     table = getDcrDataMap(projPath, scanNum)
-#     #     doCalibrate(receiver, self.receiverTable, table)
-
-#     def testAll(self):
-#         for receiver in self.receiverTable['M&C Name']:
-#             print
-#             doCalibrate(receiver, self.receiverTable, None)
-
-#     def testInvalidReceiver(self):
-#         with self.assertRaises(ValueError):
-#             doCalibrate('fake!', self.receiverTable, None)

@@ -1,5 +1,5 @@
 # Copyright (C) 2011 Associated Universities, Inc. Washington DC, USA.
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -9,11 +9,11 @@
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-# 
+#
 # Correspondence concerning GBT software should be addressed as follows:
 #       GBT Operations
 #       National Radio Astronomy Observatory
@@ -24,18 +24,21 @@
 import traceback
 from astropy.io import fits
 
+
 class Rcvr68_92:
     """
-    Represents the calibration data taken by the W-band Receiver during a scan..
+    Represents the calibration data taken by the W-band Receiver during a scan.
     """
-    
+
     def __init__(self, fitsData, debug=False):
-        
+
         self.fitsData = fitsData
 
-        # these are the possible CALPOS values, in order, i.e. 0=="Observing, 1=="Cold1", etc
+        # these are the possible CALPOS values, in order, i.e.
+        # 0=="Observing, 1=="Cold1", etc.
         # anything not from this when the motion value is not set is "Unknown"
-        self.calPosTypes = ["Observing","Cold1","Position2","Position3","Cold2","Position5"]
+        self.calPosTypes = ["Observing", "Cold1",
+                            "Position2", "Position3", "Cold2", "Position5"]
 
         self.lastQueriedDMJD = 0.0
         self.lastQueriedIndex = -1
@@ -179,7 +182,8 @@ class Rcvr68_92:
                                 print "DEBUG: missing TWARM column"
 
                         if 'endofscan' in colNames:
-                            self.scanFinished = tabData.field('endofscan')[-1] == 1
+                            self.scanFinished = tabData.field(
+                                'endofscan')[-1] == 1
                         else:
                             # need to assume it's finished
                             self.scanFinished = True
@@ -188,7 +192,8 @@ class Rcvr68_92:
 
                         self.hasTable = True
                     elif self.debug:
-                        # otherwise there is no time column, ignore anything that might be in this table
+                        # otherwise there is no time column
+                        # ignore anything that might be in this table
                         print "DEBUG: empty table."
                 else:
                     # it might have not yet been written
@@ -211,7 +216,8 @@ class Rcvr68_92:
                     # translate intPositions to strings
                     self.positions = []
                     for i in range(len(positionCol)):
-                        self.positions.append(self.getCalPosString(positionCol[i]))
+                        self.positions.append(
+                            self.getCalPosString(positionCol[i]))
                     if self.debug:
                         print "DEBUG: POSITION column translated to string values"
             else:
@@ -224,7 +230,7 @@ class Rcvr68_92:
                 for thisPos in self.positions:
                     if thisPos not in self.calPosTypes and thisPos != "Unknown":
                         print "DEBUG: unrecognized POSITION column value %s" % thisPos
-        except:
+        except Exception:
             # nothing to do except move on
             self.scanFinished = True
             if self.debug:
@@ -239,20 +245,6 @@ class Rcvr68_92:
             result = self.calPosTypes[calPosInt]
         return result
 
-    def update(self):
-        # only update this if the scan is already known to not be finished
-        if not self.scanFinished:
-            self.lastQueriedDMJD = 0.0
-            self.lastQueriedIndex = -1
-            self.hasTable = False
-            self.readInfo()
-
-    def isScanFinished(self):
-        return self.scanFinished
-
-    def getFitsver(self):
-        return self.fitsver
-
     def isAuto(self):
         return self.calSeq == 'auto'
 
@@ -261,14 +253,16 @@ class Rcvr68_92:
         return self.calPos
 
     def numrows(self):
-        "The number of available rows in the binary table."
+        """The number of available rows in the binary table."""
         if self.hasTable:
             return len(self.positions)
-
         return 0
 
-    def getPosition(self,dmjd=None,duration=None):
-        "Find the position at DMJD (days).  If it was moving (using duration to give a range) then return 'Unknown'"
+    def getPosition(self, dmjd=None, duration=None):
+        """
+        Find the position at DMJD (days).
+        If it was moving (using duration to give a range) then return 'Unknown'
+        """
         # if manual, return first row value else keyword value if table empty
         result = "Unknown"
 
@@ -280,7 +274,7 @@ class Rcvr68_92:
                 result = self.calPos
         else:
             # auto scan
-            if self.isMoving(dmjd,duration):
+            if self.isMoving(dmjd, duration):
                 result = "Unknown"
             else:
                 index = self.getIndexFromDMJD(dmjd)
@@ -291,30 +285,43 @@ class Rcvr68_92:
         return result
 
     def getPol(self, linearPol, feed, calPosition):
-        "Translate the linear polarization to the appropriate one given the CALPOSITION and feed"
+        """
+        Translate the linear polarization to the appropriate one given the
+        CALPOSITION and feed
+        """
         # linearPol is the FITS code, returns a FITS code
-        # XX : -5 YY: -6 XY: -7  XY: -8  
+        # XX : -5 YY: -6 XY: -7  XY: -8
         # RR : -1 LL: -2 RL: -3  LR: -4
         result = linearPol
         if self.filepath is not None:
-            if (calPosition == "Position2" and feed==1) or (calPosition == "Position5" and feed==2):
+            if (calPosition == "Position2" and feed == 1 or
+                    calPosition == "Position5" and feed == 2):
                 # X->L, Y->R
-                if linearPol == -5: result = -2
-                elif linearPol == -6: result = -1
-                elif linearPol == -7: result = -4
-                elif linearPol == -8: result = -3
+                if linearPol == -5:
+                    result = -2
+                elif linearPol == -6:
+                    result = -1
+                elif linearPol == -7:
+                    result = -4
+                elif linearPol == -8:
+                    result = -3
                 else:
                     print "Rcvr68_92: Unrecognized polarization code %s" % linearPol
-                    
+
         return result
 
-    def isMoving(self,dmjd=None,duration=None):
-        "Was the table moving at DMJD (days). Duration (s) defines a range, true if moving at any time during that range.  Manual scans are by definition not moving."
+    def isMoving(self, dmjd=None, duration=None):
+        """
+        Was the table moving at DMJD (days). Duration (s) defines a range,
+        true if moving at any time during that range.
+        Manual scans are by definition not moving.
+        """
         if not self.isAuto():
             return False
 
         if dmjd is None or duration is None:
-            # it's an AUTO scan but without time and duration we can't know, assuming moving
+            # it's an AUTO scan but without time and duration we can't know,
+            # assuming moving
             return True
 
         # if it gets here, it's an AUTO scan. moving is a possibility.
@@ -343,16 +350,11 @@ class Rcvr68_92:
                     break
         return result
 
-    def getTcoldKW(self):
-        "Return the TCOLD keyword value, if present."
-        return self.tcold
-
-    def getTwarmKW(self):
-        "Return the TWARM keyword value, if present."
-        return self.twarm
-
-    def getTcold(self,dmjd=None):
-        "Return TCOLD at or immediately before DMJD (days).  For manual scans, use first row in table if it exists, else the TCOLD keyword value."
+    def getTcold(self, dmjd=None):
+        """Return TCOLD at or immediately before DMJD (days).
+        For manual scans, use first row in table if it exists,
+        else the TCOLD keyword value.
+        """
         # default to TCOLD KW value
         result = self.tcold
         if not self.isAuto():
@@ -366,8 +368,12 @@ class Rcvr68_92:
 
         return result
 
-    def getTwarm(self,dmjd=None):
-        "Return TWARM at or immediately before DMJD (days).  For manual scans, use first row in table if it exists, else the TWARM keyword value."
+    def getTwarm(self, dmjd=None):
+        """
+        Return TWARM at or immediately before DMJD (days).
+        For manual scans, use first row in table if it exists,
+        else the TWARM keyword value.
+        """
         # default to TWARM KW value
         result = self.twarm
         if not self.isAuto():
@@ -381,7 +387,7 @@ class Rcvr68_92:
 
         return result
 
-    def getIndexFromDMJD(self,dmjd):
+    def getIndexFromDMJD(self, dmjd):
         # do not interpolate, try and use past values to shorten search time
         if dmjd is None:
             return -1
@@ -389,13 +395,12 @@ class Rcvr68_92:
         if len(self.dmjds) == 0:
             return -1
 
-        result = self.lastQueriedIndex
         if dmjd > self.lastQueriedDMJD:
             # move ahead
-            nextIndex = self.lastQueriedIndex+1
+            nextIndex = self.lastQueriedIndex + 1
             if nextIndex < len(self.dmjds):
                 # still times to look at
-                for i in range(nextIndex,len(self.dmjds)):
+                for i in range(nextIndex, len(self.dmjds)):
                     if dmjd < self.dmjds[i]:
                         break
                     self.lastQueriedIndex = i
@@ -403,7 +408,7 @@ class Rcvr68_92:
             # go backwards
             pastIndex = self.lastQueriedIndex
             if pastIndex >= 0:
-                for i in range(pastIndex,-1,-1):
+                for i in range(pastIndex, -1, -1):
                     self.lastQueriedIndex = i
                     if dmjd > self.dmjds[i]:
                         break
@@ -418,9 +423,10 @@ class Rcvr68_92:
 
         return self.lastQueriedIndex
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     fn = "/home/gbtdata/AGBT16B_288_03/Rcvr68_92/2017_02_27_08:59:51.fits"
     w = Rcvr68_92(fn, debug=True)
-    print(w)          
-    print(w.dmjds)          
-    print(w.twarmCol)    
+    print(w)
+    print(w.dmjds)
+    print(w.twarmCol)
