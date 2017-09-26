@@ -63,7 +63,7 @@ def getFitsForScan(projPath, scanNum):
                     managerFitsMap[manager] = fits.open(fitsPath)
                 except IOError:
                     wprint("{} is listed in ScanLog.fits as having data for "
-                           "scan {}, but no such data exists in {}! Skipping..."
+                           "scan {}, but no such data exists in {}! Skipping."
                            .format(manager, scanName, fitsPath))
 
     return managerFitsMap
@@ -205,8 +205,6 @@ def getDcrDataDescriptors(data):
     "Returns description as a list of (feed, pol, freq, phase)"
     columns = ['FEED', 'POLARIZE', 'CENTER_SKY', 'SIGREF', 'CAL']
     desc = data[columns]
-
-    row = list(desc)[0]
 
     # convert this astropy table to a simple list
     descriptors = [d.as_void() for d in list(desc)]

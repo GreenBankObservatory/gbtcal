@@ -101,7 +101,7 @@ class TestAgainstSparrowResults(unittest.TestCase):
 
     def testRcvr40_52(self):
         """Test Q Band"""
-        # TODO: Figure out if it makes any sense to include Avg here.
+        # TODO: Figure out why we are excluding DualBeam from here.
         self._testCalibrate(
             "AGBT16A_473_01:1:Rcvr40_52",
             optionsToIgnore=[
@@ -109,12 +109,14 @@ class TestAgainstSparrowResults(unittest.TestCase):
             ]
         )
 
-    # def testRcvr68_92(self):
-    #     """Test W Band"""
-    #     self._testCalibrate("AVLB17A_182_04:2:Rcvr68_92")
+    def testRcvr68_92(self):
+        """Test W Band"""
+        # TODO: DualBeam not being tested here.
+        self._testCalibrate("AGBT17A_212_05:6:Rcvr68_92")
 
     def testRcvr26_40(self):
         """Test Ka Band"""
+        # TODO: Figure out if it makes any sense to include Avg in here.
         self._testCalibrate(
             "AGBT16A_085_06:55:Rcvr26_40",
             optionsToIgnore=[
