@@ -8,8 +8,8 @@
 # - {name: Calibration Strategy, datatype: string}
 # - {name: '# Usable Beams', datatype: int64}
 # meta: !!omap
-# - polarizationAbbreviations: {both: Both, pol1: X/L, pol2: Y/R}
-# - calibrationAbbreviations: {db: Dual Beam, r: Raw, tp: Total Power}
+# - polarizationAbbreviations: {both: Avg, pol1: XL, pol2: YR}
+# - calibrationAbbreviations: {db: DualBeam, r: Raw, tp: TotalPower}
 # - calibrationOptions:
 #     1: !!python/tuple [tp, r]
 #     2: !!python/tuple [db, tp, r]

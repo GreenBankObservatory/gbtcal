@@ -1,6 +1,3 @@
-import warnings
-
-
 class Constant(object):
     @classmethod
     def all(cls):
@@ -10,7 +7,7 @@ class Constant(object):
         return members
 
     @classmethod
-    def isValid(cls,  value):
+    def isValid(cls, value):
         return value in cls.all()
 
     @classmethod
@@ -19,8 +16,8 @@ class Constant(object):
 
 
 class POLOPTS(Constant):
-    XL = 'X/L'
-    YR = 'Y/R'
+    XL = 'XL'
+    YR = 'YR'
     AVG = 'Avg'
 
 
@@ -29,6 +26,7 @@ class CALOPTS(Constant):
     TOTALPOWER = 'TotalPower'
     DUALBEAM = 'DualBeam'
     BEAMSWITCH = 'BeamSwitch'
+
 
 class POLS(Constant):
     X = 'X'
@@ -41,7 +39,3 @@ class POLS(Constant):
     @classmethod
     def all(cls):
         return cls.LINEAR + cls.CIRCULAR
-
-
-# class GfmOptions(Constant):
-#     def

@@ -1,75 +1,25 @@
 import ast
 import unittest
-import os
 
 import numpy
 
-from calibrator import (
+from Calibrators import (
     Calibrator,
     KaCalibrator,
     TraditionalCalibrator,
     WBandCalibrator,
     ArgusCalibrator,
 )
-from do_calibrate import doCalibrate
+from calibrate import doCalibrate
 from dcr_decode import decode
 from rcvr_table import ReceiverTable
-from dcr_table import DcrTable
-from constants import POLS, POLOPTS, CALOPTS
+from constants import POLOPTS, CALOPTS
+
 
 def readResultsFile(filepath):
     with open(filepath) as f:
         stuff = ast.literal_eval(f.read())
     return stuff
-
-
-calOpts = {
-    (CALOPTS.RAW, POLOPTS.AVG): {
-        'polOption': POLOPTS.AVG,
-        'doGain': False,
-        'refBeam': False
-    },
-    (CALOPTS.RAW, POLOPTS.XL.replace("/", "")): {
-        'polOption': POLOPTS.XL,
-        'doGain': False,
-        'refBeam': False
-    },
-    (CALOPTS.RAW, POLOPTS.YR.replace("/", "")): {
-        'polOption': POLOPTS.YR,
-        'doGain': False,
-        'refBeam': False
-    },
-    (CALOPTS.TOTALPOWER, POLOPTS.AVG): {
-        'polOption': POLOPTS.AVG,
-        'doGain': True,
-        'refBeam': False
-    },
-    (CALOPTS.TOTALPOWER, POLOPTS.XL.replace("/", "")): {
-        'polOption': POLOPTS.XL,
-        'doGain': True,
-        'refBeam': False
-    },
-    (CALOPTS.TOTALPOWER, POLOPTS.YR.replace("/", "")): {
-        'polOption': POLOPTS.YR,
-        'doGain': True,
-        'refBeam': False
-    },
-    (CALOPTS.DUALBEAM, POLOPTS.XL.replace("/", "")): {
-        'polOption': POLOPTS.XL,
-        'doGain': True,
-        'refBeam': True
-    },
-    (CALOPTS.DUALBEAM, POLOPTS.YR.replace("/", "")): {
-        'polOption': POLOPTS.YR,
-        'doGain': True,
-        'refBeam': True
-    },
-    (CALOPTS.DUALBEAM, POLOPTS.AVG): {
-        'polOption': POLOPTS.AVG,
-        'doGain': True,
-        'refBeam': True
-    }
-}
 
 
 class TestAgainstSparrowResults(unittest.TestCase):
@@ -111,13 +61,12 @@ class TestAgainstSparrowResults(unittest.TestCase):
         expectedResults = readResultsFile(expectedResultsPath)
 
         table = decode(projPath, scanNum)
-        receiver = self.getReceiver(projPath)
         for option in optionsToIgnore:
             del expectedResults[option]
 
         for calOption, result in expectedResults.items():
-            actual = doCalibrate(receiver, self.receiverTable, table,
-                                 **calOpts[calOption])
+            actual = doCalibrate(self.receiverTable, table,
+                                 *calOption)
             expected = numpy.array(result)
             # TODO: ROUNDING??? WAT
             if (calOption[0] == CALOPTS.RAW and
@@ -152,7 +101,13 @@ class TestAgainstSparrowResults(unittest.TestCase):
 
     def testRcvr40_52(self):
         """Test Q Band"""
-        self._testCalibrate("AGBT16A_473_01:1:Rcvr40_52")
+        # TODO: Figure out if it makes any sense to include Avg here.
+        self._testCalibrate(
+            "AGBT16A_473_01:1:Rcvr40_52",
+            optionsToIgnore=[
+                ('DualBeam', 'XL'), ('DualBeam', 'YR'), ('DualBeam', 'Avg')
+            ]
+        )
 
     # def testRcvr68_92(self):
     #     """Test W Band"""
@@ -160,15 +115,14 @@ class TestAgainstSparrowResults(unittest.TestCase):
 
     def testRcvr26_40(self):
         """Test Ka Band"""
-        self._testCalibrate("AGBT16A_085_06:55:Rcvr26_40",
-                            optionsToIgnore=[
-                                ('Raw', 'YR'), ('Raw', 'XL'), ('Raw', 'Avg'),
-                                ('DualBeam', 'YR'), ('DualBeam', 'XL'), ('DualBeam', 'Avg'),
-                            ])
+        self._testCalibrate(
+            "AGBT16A_085_06:55:Rcvr26_40",
+            optionsToIgnore=[
+                ('Raw', 'XL'), ('Raw', 'YR'), ('Raw', 'Avg'),
+                ('DualBeam', 'XL'), ('DualBeam', 'YR'), ('DualBeam', 'Avg'),
+                ('TotalPower', 'Avg')
+            ]
+        )
 
     def testRcvr75_115(self):
         pass
-
-
-
-
