@@ -112,7 +112,7 @@ class TestAgainstSparrowResults(unittest.TestCase):
     def testRcvr68_92(self):
         """Test W Band"""
         # TODO: DualBeam not being tested here.
-        self._testCalibrate("AGBT17A_212_05:6:Rcvr68_92")
+        self._testCalibrate("AVLB17A_182_04:2:Rcvr68_92")
 
     def testRcvr26_40(self):
         """Test Ka Band"""
