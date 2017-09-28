@@ -62,7 +62,8 @@ class TestAgainstSparrowResults(unittest.TestCase):
 
         table = decode(projPath, scanNum)
         for option in optionsToIgnore:
-            del expectedResults[option]
+            if option in expectedResults:
+                del expectedResults[option]
 
         for calOption, result in expectedResults.items():
             actual = doCalibrate(self.receiverTable, table,
@@ -120,9 +121,12 @@ class TestAgainstSparrowResults(unittest.TestCase):
         self._testCalibrate(
             "AGBT16A_085_06:55:Rcvr26_40",
             optionsToIgnore=[
-                ('Raw', 'XL'), ('Raw', 'YR'), ('Raw', 'Avg'),
+                # ('Raw', 'XL'), ('Raw', 'YR'), ('Raw', 'Avg'),
+                ('Raw', 'Avg'),
                 ('DualBeam', 'XL'), ('DualBeam', 'YR'), ('DualBeam', 'Avg'),
-                ('TotalPower', 'Avg')
+                ('BeamSwitchedTBOnly', 'XL'), ('BeamSwitchedTBOnly', 'YR'),
+                ('BeamSwitchedTBOnly', 'Avg'),
+                # ('TotalPower', 'Avg')
             ]
         )
 
