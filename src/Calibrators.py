@@ -102,11 +102,17 @@ class Calibrator(object):
         return feedTotalPowers[sig] - feedTotalPowers[ref]
 
     def getRawPower(self, data, feed, pol, freq):
+        """Raw power may be simply the data straight from the map"""
+        sig = self.getSignalRawPower(data, feed, pol, freq)
+        ref = self.getRefRawPower(data, feed, pol, freq)
+        return (sig - ref) if ref is not None else sig
+
+    def getSignalRawPower(self, data, feed, pol, freq):
         """Simply get the raw power, for the right phase"""
         phases = numpy.unique(data['SIGREF', 'CAL'])
         phase = (0, 0) if len(phases) > 1 else phases[0]
-
         sigref, cal = phase
+
         mask = (
             (data['FEED'] == feed) &
             (data['SIGREF'] == sigref) &
@@ -117,7 +123,31 @@ class Calibrator(object):
 
         raw = data[mask]
         assert len(raw) == 1, \
-            "There should only ever be one row of data for getRawPower"
+            "There should only ever be one row of data for getSignalRawPower"
+        return numpy.array(raw['DATA'])
+
+    def getRefRawPower(self, data, feed, pol, freq):
+        """Simply get the raw power for the reference phase"""
+        phases = numpy.unique(data['SIGREF', 'CAL'])
+        # TBD: need to convert this or the next check fails
+        phs = [(p[0], p[1]) for p in list(phases)]
+        refPhase = (1, 0)
+        if refPhase not in phs:
+            # bail if we simply don't have that phase
+            return None
+
+        sigref, cal = refPhase
+        mask = (
+            (data['FEED'] == feed) &
+            (data['SIGREF'] == sigref) &
+            (data['CAL'] == cal) &
+            (data['CENTER_SKY'] == freq) &
+            (data['POLARIZE'] == pol)
+        )
+
+        raw = data[mask]
+        assert len(raw) == 1, \
+            "There should only ever be one row of data for getRefRawPower"
         return numpy.array(raw['DATA'])
 
     def getFreqForData(self, data, feed, pol):
@@ -251,20 +281,28 @@ class KaCalibrator(TraditionalCalibrator):
 
     def __init__(self, ifDcrDataTable):
         super(KaCalibrator, self).__init__(ifDcrDataTable)
+        # TBD: should this be in the master receiver table?
         self.kaBeamMap = {1: 'R', 2: 'L'}
         self.kaPolMap = {'R': 1, 'L': 2}
 
     def calibrateTotalPower(self, data, feed, pol, freq):
         "Calibrate the total power, but only for valid polarization"
-        # pol = self.kaBeamMap[feed]
         feed = self.kaPolMap[pol]
         return super(KaCalibrator, self).calibrateTotalPower(data,
                                                              feed,
                                                              pol,
                                                              freq)
 
+    def getRawPower(self, data, feed, pol, freq):
+        "Calibrate the raw power, but only for valid polarization"
+        feed = self.kaPolMap[pol]
+        return super(KaCalibrator, self).getRawPower(data,
+                                                     feed,
+                                                     pol,
+                                                     freq)
+
     def getFreqForData(self, data, feed, pol):
-        # pol = self.kaBeamMap[feed]
+        "Get the frequency, but only for valid polarization"
         feed = self.kaPolMap[pol]
         return super(KaCalibrator, self).getFreqForData(data, feed, pol)
 
