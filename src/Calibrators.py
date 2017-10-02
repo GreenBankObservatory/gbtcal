@@ -26,10 +26,10 @@ class Calibrator(object):
         raise NotImplementedError("findCalFactors() must be implemented for "
                                   "all Calibrator subclasses!")
 
-    def doMath(self, data, doGain, polOption, refBeam):
+    def doMath(self, table, doGain, polOption, refBeam):
         """Set up the calculations for all calibration types."""
         # handle single pols, or averages
-        allPols = numpy.unique(data['POLARIZE'])
+        allPols = numpy.unique(table['POLARIZE'])
         allPols = allPols.tolist()
 
         validPols = [POLS.isValid(pol) for pol in allPols]
@@ -45,9 +45,9 @@ class Calibrator(object):
         else:
             pols = [polOption]
 
-        trackBeam = data.meta['TRCKBEAM']
+        trackBeam = table.meta['TRCKBEAM']
 
-        feeds = numpy.unique(data['FEED'])
+        feeds = numpy.unique(table['FEED'])
 
         if trackBeam not in feeds:
             # WTF!  How to know which feed to use for raw & tp?
@@ -66,69 +66,94 @@ class Calibrator(object):
             # make this general for both a single pol, and averaging
             polPowers = []
             for pol in pols:
-                freq = self.getFreqForData(data, feed, pol)
+                freq = self.getFreqForData(table, feed, pol)
                 if doGain:
                     # TODO: This logic seems naughty... Calibrator shouldn't
                     # have any specific knowledge about its children. Though
                     # perhaps this is generic enough that it could be made
                     # top level? That would work...
-                    powerPol = self.calibrateTotalPower(data, feed, pol, freq)
+                    powerPol = self.calibrateTotalPower(table, feed, pol, freq)
                 else:
-                    powerPol = self.getRawPower(data, feed, pol, freq)
+                    powerPol = self.getRawPower(table, feed, pol, freq)
                 polPowers.append(powerPol)
-            totals[feed] = sum(polPowers) / float(len(pols))
+
+            totals[feed] = numpy.sum(polPowers, axis=0) / len(pols)
+
+        # Put the calibrated data in the table metadata
+        # TODO: This seems somewhat naughty still...
+        table.meta['calibratedData'] = totals
 
         # If refBeam is True, then Dual Beam
         if refBeam:
-            if len(numpy.unique(data['FEED'])) != 2:
+            if len(numpy.unique(table['FEED'])) != 2:
                 raise ValueError("Data table must contain exactly two "
                                  "unique feeds to perform "
                                  "dual beam calibration")
-
-            return self.calibrateDualBeam(totals, trackBeam, feeds)
+            # import ipdb; ipdb.set_trace()
+            return self.calibrateDualBeam(table)
         else:
             # total power
+            # TODO: Why is this feeds[0]? Shouldn't it be TRCKBEAM?
             return totals[feeds[0]]
 
-    def calibrateDualBeam(self, feedTotalPowers, trackBeam, feeds):
+    def determineTrackFeed(self, table):
+        feeds = table.getUnique('FEED')
+        trackBeam = table.meta['TRCKBEAM']
+        if len(feeds) < 2:
+            raise ValueError("Must have at least two feeds to determine "
+                             "the tracking/reference feeds")
+        elif len(feeds > 2):
+            wprint("More than two feeds provided; reference feed will be "
+                   "ambiguous")
+
+        if trackBeam == feeds[0]:
+            sig = feeds[0]
+            ref = feeds[1]
+        else:
+            sig = feeds[1]
+            ref = feeds[0]
+        return sig, ref
+
+    def calibrateDualBeam(self, table):
         """Here we're just finding the difference between the two beams"""
         # TODO: REMOVE FROM CLASS?
-        assert len(feeds) == 2
-        if trackBeam == feeds[0]:
-            sig, ref = feeds
-        else:
-            ref, sig = feeds
+        sigFeed, refFeed = self.determineTrackFeed(table)
+        calibratedData = table.meta['calibratedData']
+        return calibratedData[sigFeed] - calibratedData[refFeed]
 
-        return feedTotalPowers[sig] - feedTotalPowers[ref]
-
-    def getRawPower(self, data, feed, pol, freq):
-        """Raw power may be simply the data straight from the map"""
-        sig = self.getSignalRawPower(data, feed, pol, freq)
-        ref = self.getRefRawPower(data, feed, pol, freq)
+    def getRawPower(self, table, feed, pol, freq):
+        """Raw power is be simply the data straight from the table"""
+        sig = self.getSignalRawPower(table, feed, pol, freq)
+        ref = self.getRefRawPower(table, feed, pol, freq)
         return (sig - ref) if ref is not None else sig
 
-    def getSignalRawPower(self, data, feed, pol, freq):
+    def getSignalRawPower(self, table, feed, pol, freq):
         """Simply get the raw power, for the right phase"""
-        phases = numpy.unique(data['SIGREF', 'CAL'])
+        phases = table.getUnique(['SIGREF', 'CAL'])
+
+        # Default phase to SIGREF=0, CAL=0
+        # TODO: Why are we doing this?
         phase = (0, 0) if len(phases) > 1 else phases[0]
         sigref, cal = phase
 
         mask = (
-            (data['FEED'] == feed) &
-            (data['SIGREF'] == sigref) &
-            (data['CAL'] == cal) &
-            (data['CENTER_SKY'] == freq) &
-            (data['POLARIZE'] == pol)
+            (table['FEED'] == feed) &
+            (table['SIGREF'] == sigref) &
+            (table['CAL'] == cal) &
+            (table['CENTER_SKY'] == freq) &
+            (table['POLARIZE'] == pol)
         )
 
-        raw = data[mask]
-        assert len(raw) == 1, \
-            "There should only ever be one row of data for getSignalRawPower"
-        return numpy.array(raw['DATA'])
+        rawData = table[mask]['DATA']
+        if len(rawData) != 1:
+            raise ValueError("There should be exactly one row of data "
+                             "for getSignalRawPower; got {}"
+                             .format(len(rawData)))
+        return rawData
 
-    def getRefRawPower(self, data, feed, pol, freq):
+    def getRefRawPower(self, table, feed, pol, freq):
         """Simply get the raw power for the reference phase"""
-        phases = numpy.unique(data['SIGREF', 'CAL'])
+        phases = table.getUnique(['SIGREF', 'CAL'])
         # TBD: need to convert this or the next check fails
         phs = [(p[0], p[1]) for p in list(phases)]
         refPhase = (1, 0)
@@ -138,19 +163,21 @@ class Calibrator(object):
 
         sigref, cal = refPhase
         mask = (
-            (data['FEED'] == feed) &
-            (data['SIGREF'] == sigref) &
-            (data['CAL'] == cal) &
-            (data['CENTER_SKY'] == freq) &
-            (data['POLARIZE'] == pol)
+            (table['FEED'] == feed) &
+            (table['SIGREF'] == sigref) &
+            (table['CAL'] == cal) &
+            (table['CENTER_SKY'] == freq) &
+            (table['POLARIZE'] == pol)
         )
 
-        raw = data[mask]
-        assert len(raw) == 1, \
-            "There should only ever be one row of data for getRefRawPower"
-        return numpy.array(raw['DATA'])
+        rawData = table[mask]['DATA']
+        if len(rawData) != 1:
+            raise ValueError("There should be exactly one row of data "
+                             "for getSignalRawPower; got {}"
+                             .format(len(rawData)))
+        return rawData
 
-    def getFreqForData(self, data, feed, pol):
+    def getFreqForData(self, table, feed, pol):
         """
         Get the first data's frequency that has the given feed and polarization
         """
@@ -162,19 +189,20 @@ class Calibrator(object):
                              .format(pol, POLS.all()))
 
         mask = (
-            (data['FEED'] == feed) &
-            (data['POLARIZE'] == pol)
+            (table['FEED'] == feed) &
+            (table['POLARIZE'] == pol)
         )
 
-        numUniqueFreqs = len(numpy.unique(data[mask]['CENTER_SKY']))
+        feedTable = table[mask]
+        numUniqueFreqs = len(feedTable.getUnique(['CENTER_SKY']))
 
         if numUniqueFreqs != 1:
             raise ValueError("Should be exactly one CENTER_SKY "
-                             "for a given FEED and POLARIZE. "
-                             "Got {} unique freq values."
+                             "for a given FEED and POLARIZE; "
+                             "got {} unique freq values."
                              .format(numUniqueFreqs))
 
-        return data[mask]['CENTER_SKY'][0]
+        return feedTable['CENTER_SKY'][0]
 
     def calibrate(self, polOption, doGain, refBeam):
         newTable = self.ifDcrDataTable.copy()
@@ -190,38 +218,40 @@ class Calibrator(object):
 
 
 class TraditionalCalibrator(Calibrator):
-    def findCalFactors(self, data):
-        receiver = data.meta['RECEIVER']
+    def findCalFactors(self, table):
+        receiver = table.meta['RECEIVER']
 
         fitsForScan = getFitsForScan(self.projPath, self.scanNum)
         rcvrCalHduList = fitsForScan[receiver]
         rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
 
         # TODO: Double check this assumption
-        uniqueRows = numpy.unique(data['FEED', 'POLARIZE',
+        uniqueRows = numpy.unique(table['FEED', 'POLARIZE',
                                        'CENTER_SKY', 'BANDWDTH',
                                        'HIGH_CAL'])
         for feed, pol, centerSkyFreq, bandwidth, highCal in uniqueRows:
-            mask = ((data['FEED'] == feed) &
-                    (data['POLARIZE'] == pol) &
-                    (data['CENTER_SKY'] == centerSkyFreq) &
-                    (data['BANDWDTH'] == bandwidth) &
-                    (data['HIGH_CAL'] == highCal))
+            mask = (
+                (table['FEED'] == feed) &
+                (table['POLARIZE'] == pol) &
+                (table['CENTER_SKY'] == centerSkyFreq) &
+                (table['BANDWDTH'] == bandwidth) &
+                (table['HIGH_CAL'] == highCal)
+            )
 
-            maskedData = data[mask]
+            maskedTable = table[mask]
 
-            if len(numpy.unique(maskedData['RECEPTOR'])) != 1:
+            if len(numpy.unique(maskedTable['RECEPTOR'])) != 1:
                 raise ValueError("The rows in the receiver calibration file "
                                  "must all be unique for all "
                                  "feed/polarization/frequency groupings.")
 
-            receptor = maskedData['RECEPTOR'][0]
+            receptor = maskedTable['RECEPTOR'][0]
 
             tCal = getTcal(rcvrCalTable, feed, receptor, pol,
                            highCal, centerSkyFreq, bandwidth)
-            for row in data[mask]:
+            for row in table[mask]:
                 # TODO: Cleaner way of doing this?
-                data[row['INDEX']]['FACTOR'] = tCal
+                table[row['INDEX']]['FACTOR'] = tCal
 
     def getAntennaTemperature(self, calOnData, calOffData, tCal):
         countsPerKelvin = (numpy.sum((calOnData - calOffData) / tCal) /
@@ -229,18 +259,18 @@ class TraditionalCalibrator(Calibrator):
         Ta = 0.5 * (calOnData + calOffData) / countsPerKelvin - 0.5 * tCal
         return Ta
 
-    def calibrateTotalPower(self, data, feed, pol, freq, refPhase=False):
+    def calibrateTotalPower(self, table, feed, pol, freq, refPhase=False):
         # NOTE: This is AGNOSTIC to SIGREF. That is, it cares only about CAL
 
         mask = (
-            (data['FEED'] == feed) &
-            (numpy.char.rstrip(data['POLARIZE']) == pol) &
-            (data['CENTER_SKY'] == freq)
+            (table['FEED'] == feed) &
+            (table['POLARIZE'] == pol) &
+            (table['CENTER_SKY'] == freq)
             # TODO: Not sure if this should be here or not...
-            # (data['SIGREF'] == 0)
+            # (table['SIGREF'] == 0)
         )
 
-        dataToCalibrate = data[mask]
+        dataToCalibrate = table[mask]
 
         ref = 1 if refPhase else 0
 
@@ -261,7 +291,7 @@ class TraditionalCalibrator(Calibrator):
                              "'on' and 'off' data")
 
         if onRow['FACTOR'] != offRow['FACTOR']:
-            raise ValueError("TCAL of 'on' and 'off' data must be identical")
+            raise ValueError("FACTOR of 'on' and 'off' data must be identical")
 
         onData = onRow['DATA'][0]
         offData = offRow['DATA'][0]
@@ -285,30 +315,117 @@ class KaCalibrator(TraditionalCalibrator):
         self.kaBeamMap = {1: 'R', 2: 'L'}
         self.kaPolMap = {'R': 1, 'L': 2}
 
-    def calibrateTotalPower(self, data, feed, pol, freq):
+    def calibrateTotalPower(self, table, feed, pol, freq):
         "Calibrate the total power, but only for valid polarization"
         feed = self.kaPolMap[pol]
-        return super(KaCalibrator, self).calibrateTotalPower(data,
+        return super(KaCalibrator, self).calibrateTotalPower(table,
                                                              feed,
                                                              pol,
                                                              freq)
 
-    def getRawPower(self, data, feed, pol, freq):
+    def getRawPower(self, table, feed, pol, freq):
         "Calibrate the raw power, but only for valid polarization"
         feed = self.kaPolMap[pol]
-        return super(KaCalibrator, self).getRawPower(data,
+        return super(KaCalibrator, self).getRawPower(table,
                                                      feed,
                                                      pol,
                                                      freq)
 
-    def getFreqForData(self, data, feed, pol):
+    def getFreqForData(self, table, feed, pol):
         "Get the frequency, but only for valid polarization"
         feed = self.kaPolMap[pol]
-        return super(KaCalibrator, self).getFreqForData(data, feed, pol)
+        return super(KaCalibrator, self).getFreqForData(table, feed, pol)
+
+
+
+    def calibrateBeamSwitchedTBOnly(self, table):
+        """Given a data table, calibrate based on the indicated track beam
+        and return the result."""
+
+        # NOTE: There is an important distinction here between the
+        # signal/reference _feeds_ and the SIGREF column. The signal feed
+        # can have its SIGREF column indicate 'reference', and vice versa.
+        # So, the variable names here are very verbose to ensure accuracy
+
+        sigFeed, refFeed = self.determineTrackFeed(table)
+
+        # get the total power of the tracking beam's signal phases
+        # TODO: This map should not live here!
+        kaPolMap = {1: 'R', 2: 'L'}
+
+        # Polarization for the signal feed
+        sigPol = kaPolMap[sigFeed]
+        # Frequency for the signal feed
+        sigFreq = self.getFreqForData(table, sigFeed, sigPol)
+        # Create a table containing for the signal feed
+        sigFeedMask = (
+            (table['FEED'] == sigFeed) &
+            (table['POLARIZE'] == sigPol) &
+            (table['CENTER_SKY'] == sigFreq)
+        )
+        sigFeedTable = table[sigFeedMask]
+
+        # From the data in the signal feed table, create a table
+        # containing only the rows where SIGREF indicated SIG
+        sigFeedSigMask = (sigFeedTable['SIGREF'] == 0)
+        sigFeedSigTable = sigFeedTable[sigFeedSigMask]
+
+        # Now, select the rows where the cal diode was on...
+        sigCalOnMask = (sigFeedSigTable['CAL'] == 1)
+        sigCalOn = sigFeedSigTable[sigCalOnMask]
+
+        # ...and the rows where it was off
+        sigCalOffMask = (sigFeedSigTable['CAL'] == 0)
+        sigCalOff = sigFeedSigTable[sigCalOffMask]
+
+        if sigCalOn['FACTOR'][0] != sigCalOff['FACTOR'][0]:
+            raise ValueError("tCal for signal beam should be identical "
+                             "whether CAL is on or off")
+
+        if len(sigFeedTable.getUnique('FACTOR')) != 1:
+            raise ValueError("There must be only one tCal value for a given "
+                             "feed")
+        # Get the tCal for the signal beam
+        sigTcal = sigFeedTable['FACTOR'][0]
+        sigTa = self.getAntennaTemperature(sigCalOn['DATA'][0],
+                                           sigCalOff['DATA'][0],
+                                           sigTcal)
+
+        # From the data in the signal feed table, create a table
+        # containing only the rows where SIGREF indicated REF
+        sigFeedRefMask = (sigFeedTable['SIGREF'] == 1)
+        sigFeedRefTable = sigFeedTable[sigFeedRefMask]
+
+        sigFeedRefCalOnMask = (sigFeedRefTable['CAL'] == 1)
+        sigFeedRefCalOnTable = sigFeedRefTable[sigFeedRefCalOnMask]
+
+        sigFeedRefCalOffMask = (sigFeedRefTable['CAL'] == 0)
+        sigFeedRefCalOffTable = sigFeedRefTable[sigFeedRefCalOffMask]
+        if len(sigFeedRefCalOffTable) != 1 or len(sigFeedRefCalOnTable) != 1:
+            raise ValueError("There should be exactly one row each for "
+                             "sigFeedRefCalOnTable (actual: {}) and "
+                             "sigFeedRefCalOffTable (actual: {})"
+                             .format(len(sigFeedRefCalOnTable),
+                                     len(sigFeedRefCalOffTable)))
+
+        if sigFeedRefCalOnTable['FACTOR'][0] != sigFeedRefCalOffTable['FACTOR'][0]:
+            raise ValueError("tCal for reference beam should be identical "
+                             "whether CAL is on or off")
+
+        # Pick any of the reference feed rows to get the reference beam TCal
+        refTcal = table[table['FEED'] == refFeed]['FACTOR'][0]
+        refTa = self.getAntennaTemperature(sigFeedRefCalOnTable['DATA'][0],
+                                           sigFeedRefCalOffTable['DATA'][0],
+                                           refTcal)
+
+        return sigTa - refTa
+
+    def calibrateDualBeam(self, table):
+        return self.calibrateBeamSwitchedTBOnly(table)
 
 
 class CalSeqCalibrator(Calibrator):
-    def findCalFactors(self, data):
+    def findCalFactors(self, table):
         # This is defined in the subclasses
         gains = self.getGains()
         if gains is None:
@@ -316,32 +433,30 @@ class CalSeqCalibrator(Calibrator):
             wprint("Could not find gain values. Setting all gains to 1.0")
             return
 
-        for row in data:
+        for row in table:
             index = str(row['FEED']) + row['POLARIZE']
-            data[row['INDEX']]['FACTOR'] = gains[index]
+            table[row['INDEX']]['FACTOR'] = gains[index]
 
-    def calibrateTotalPower(self, data, feed, pol, freq):
+    def calibrateTotalPower(self, table, feed, pol, freq):
         """Total power for External Cals is just the off with a gain."""
         offMask = (
-            (data['FEED'] == feed) &
-            (numpy.char.rstrip(data['POLARIZE']) == pol) &
-            (data['CENTER_SKY'] == freq) &
-            (data['CAL'] == 0)
+            (table['FEED'] == feed) &
+            (table['POLARIZE'] == pol) &
+            (table['CENTER_SKY'] == freq) &
+            (table['CAL'] == 0)
         )
 
-        offRow = data[offMask]
+        offTable = table[offMask]
 
-        if len(offRow) != 1:
+        if len(offTable) != 1:
             raise ValueError("Must be exactly one row for 'off' data")
 
-        # TODO: This is probably a bug in the decode code...
         # This is an array of a single array, so we extract the inner array
-        offData = offRow['DATA'][0]
+        offData = offTable['DATA'][0]
         # Doesn't matter which row we grab this from; they are identical
-        gain = offRow['FACTOR']
+        gain = offTable['FACTOR']
         # Need to put this BACK into an array where the only element is
         # the actual array
-        # TODO: This is sooooo dumb, plz fix
         calData = gain * (offData - numpy.median(offData))
         return calData
 

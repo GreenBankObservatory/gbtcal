@@ -26,6 +26,7 @@ class CALOPTS(Constant):
     TOTALPOWER = 'TotalPower'
     DUALBEAM = 'DualBeam'
     BEAMSWITCH = 'BeamSwitch'
+    BEAMSWITCHEDTBONLY = 'BeamSwitchedTBOnly'
 
 
 class POLS(Constant):

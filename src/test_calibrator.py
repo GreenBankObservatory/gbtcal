@@ -64,7 +64,6 @@ class TestAgainstSparrowResults(unittest.TestCase):
         for option in optionsToIgnore:
             if option in expectedResults:
                 del expectedResults[option]
-
         for calOption, result in expectedResults.items():
             actual = doCalibrate(self.receiverTable, table,
                                  *calOption)
@@ -73,7 +72,6 @@ class TestAgainstSparrowResults(unittest.TestCase):
             if (calOption[0] == CALOPTS.RAW and
                     calOption[1] == POLOPTS.AVG):
                 actual = numpy.floor(actual)
-
             self.assertTrue(numpy.allclose(actual, expected),
                             "Test for {} failed: {} != {}"
                             .format(calOption,
@@ -121,12 +119,10 @@ class TestAgainstSparrowResults(unittest.TestCase):
         self._testCalibrate(
             "AGBT16A_085_06:55:Rcvr26_40",
             optionsToIgnore=[
-                # ('Raw', 'XL'), ('Raw', 'YR'), ('Raw', 'Avg'),
                 ('Raw', 'Avg'),
-                ('DualBeam', 'XL'), ('DualBeam', 'YR'), ('DualBeam', 'Avg'),
-                ('BeamSwitchedTBOnly', 'XL'), ('BeamSwitchedTBOnly', 'YR'),
-                ('BeamSwitchedTBOnly', 'Avg'),
-                # ('TotalPower', 'Avg')
+                # Sparrow does NOT properly calibrate for XL, so we ignore those
+                ('BeamSwitchedTBOnly', 'XL'),
+                ('BeamSwitchedTBOnly', 'Avg')
             ]
         )
 

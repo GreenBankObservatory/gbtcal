@@ -10,7 +10,7 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
     receiver = dataTable.meta['RECEIVER']
     receiverRow = receiverTable.getReceiverInfo(receiver)
     try:
-        calibratorStr = receiverRow['Calibration Strategy'][0]
+        calibratorStr = receiverRow['Cal Strategy'][0]
     except IndexError:
         raise ValueError("Receiver '{}' does not exist in the receiver table!"
                          .format(receiver))
@@ -29,7 +29,7 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
             raise ValueError(":(")
 
     doGain = calMode != CALOPTS.RAW
-    refBeam = calMode == CALOPTS.DUALBEAM
+    refBeam = calMode == CALOPTS.DUALBEAM or calMode == CALOPTS.BEAMSWITCHEDTBONLY
 
     try:
         calibratorClass = getattr(Calibrators, calibratorStr)
@@ -45,8 +45,8 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
 
 def validateOptions(rcvrRow, calMode, polMode):
     rcvrName = rcvrRow['M&C Name'][0]
-    calOptions = rcvrRow['Calibration Options'][0]
-    polOptions = rcvrRow['Polarization Options'][0]
+    calOptions = rcvrRow['Cal Options'][0]
+    polOptions = rcvrRow['Pol Options'][0]
     if calMode not in calOptions:
         raise ValueError("calMode '{}' is invalid for receiver {}. "
                          "Must be one of {}"

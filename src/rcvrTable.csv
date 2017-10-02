@@ -13,10 +13,10 @@
 # - {name: 'Default Cal Option', datatype: string}
 # meta: !!omap
 # - polarizationAbbreviations: {both: Avg, pol1: XL, pol2: YR}
-# - calibrationAbbreviations: {db: DualBeam, r: Raw, tp: TotalPower}
+# - calibrationAbbreviations: {db: DualBeam, r: Raw, tp: TotalPower, bs: BeamSwitchedTBOnly}
 # - calibrationOptions:
 #     1: !!python/tuple [tp, r]
-#     2: !!python/tuple [db, tp, r]
+#     2: !!python/tuple [bs, db, tp, r]
 # - polarizationOptions:
 #     1: !!python/tuple [pol1, pol2]
 #     2: !!python/tuple [pol1, pol2, both]
