@@ -20,10 +20,10 @@ class ReceiverTable(Table):
         polOpts = [cls._derivePolarizationOptions(table, receiver)
                    for receiver in table['M&C Name']]
 
-        calOptsCol = Column(name='Calibration Options',
+        calOptsCol = Column(name='Cal Options',
                             data=calOpts)
 
-        polOptsCol = Column(name='Polarization Options',
+        polOptsCol = Column(name='Pol Options',
                             data=polOpts)
 
         table.add_column(calOptsCol)
@@ -44,7 +44,7 @@ class ReceiverTable(Table):
     @staticmethod
     def _derivePolarizationOptions(table, receiver):
         receiverRow = table.getReceiverInfo(receiver)
-        numPols = receiverRow['# Polarizations'][0]
+        numPols = receiverRow['# Pols'][0]
         polOpts = table.meta['polarizationOptions'][numPols]
         return [table.meta['polarizationAbbreviations'][polOptName]
                 for polOptName in polOpts]
@@ -55,4 +55,5 @@ class ReceiverTable(Table):
 
 if __name__ == '__main__':
     receiverTable = ReceiverTable.load('rcvrTable.csv')
-    print(receiverTable)
+    # print(receiverTable)
+    receiverTable.printFull()
