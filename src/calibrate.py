@@ -20,10 +20,12 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
     if polMode == POLOPTS.AVG:
         polOption = polMode
     else:
+        # we may get 'XL', but we need to pass either 'X' or 'L'
         polarizations = numpy.unique(dataTable['POLARIZE'])
-        if set(polarizations).issuperset(["X", "Y"]):
+        polset = set(polarizations)
+        if polset.issuperset(["X"]) or polset.issuperset(["Y"]):
             polOption = polMode[0]
-        elif set(polarizations).issuperset(["L", "R"]):
+        elif polset.issuperset(["L"]) or polset.issuperset(["R"]):
             polOption = polMode[1]
         else:
             raise ValueError(":(")
@@ -66,3 +68,21 @@ def calibrate(projPath, scanNum, calMode, polMode):
     dataTable = decode(projPath, scanNum)
 
     return doCalibrate(rcvrTable, dataTable, calMode, polMode)
+
+
+if __name__ == "__main__":
+
+    # Here we provide a quick and easy way to calibrate stuff:
+
+    # TBF; derive from args
+    # projPath = "/home/archive/science-data/11B/AGBT11B_023_02"
+    scanNum = 1
+    projPath = '/home/archive/science-data/16B/AGBT16B_119_04'
+    # TBF: derive from receivers table
+    calModes = ["Raw", "TotalPower", "DualBeam"]
+    polModes = ["XL", "YR", "Avg"]
+    print("Calibrating scan {}, proj {}".format(scanNum, projPath))
+    for cal in calModes:
+        for pol in polModes:
+            print("Calibrating for {}, {}".format(cal, pol))
+            data = calibrate(projPath, scanNum, cal, pol)
