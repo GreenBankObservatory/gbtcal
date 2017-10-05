@@ -493,6 +493,9 @@ class CalSeqCalibrator(Calibrator):
         calSeqScans = [(scan, file) for (scan, proc, file) in scans
                        if scan <= self.scanNum and proc == procname]
 
+        if len(calSeqScans) == 0:
+            return []
+
         for i in range(min(len(calSeqScans), count)):
             procScanNums[-i - 1] = calSeqScans[-i - 1]
 
@@ -505,9 +508,10 @@ class WBandCalibrator(CalSeqCalibrator):
         For this scan, calculate the gains from previous calseq scan.
         This has format {"1X": 0.0, "2X": 0.0, "1Y": 0.0, "2Y": 0.0}
         """
-        calSeqScanNum = self._findMostRecentProcScans("CALSEQ")[0][0]
+        calSeqScanNumInfo = self._findMostRecentProcScans("CALSEQ")
 
-        if calSeqScanNum:
+        if len(calSeqScanNumInfo) > 0:
+            calSeqScanNum = calSeqScanNumInfo[0][0]
             cal = WBandCalibration()
             cal.makeCalScan(self.projPath, calSeqScanNum)
             return cal.calData[1]  # gains are in this spot
