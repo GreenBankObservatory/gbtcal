@@ -23,6 +23,8 @@
 # - calibratorAbbreviations: {cs: Cal Seq, ns: Noise Source}
 # schema: astropy-2.0
 "M&C Name" Abbrev. "# Beams" "# Pols" "Cal Strategy" "# Usable Beams" "OOF Support" "OOF Required" "Default Pol Option" "Default Cal Option"
+RcvrPF_1 PF_1 1 2 TraditionalCalibrator 1 True False Avg ""
+RcvrPF_2 PF_2 1 2 TraditionalCalibrator 1 True False Avg ""
 Rcvr1_2 L 1 2 TraditionalCalibrator 1 True False Avg ""
 Rcvr2_3 S 1 2 TraditionalCalibrator 1 True False Avg ""
 Rcvr4_6 C 1 2 TraditionalCalibrator 1 True False Avg ""
@@ -30,6 +32,6 @@ Rcvr8_10 X 1 2 TraditionalCalibrator 1 True False Avg ""
 Rcvr12_18 Ku 2 2 TraditionalCalibrator 2 True False Avg ""
 RcvrArray18_26 KFPA 7 2 TraditionalCalibrator 2 True False Avg ""
 Rcvr26_40 Ka 2 1 KaCalibrator 2 True True Avg ""
-Rcvr40_52 Q 2 2 TraditionalCalibrator 1 True True Avg ""
+Rcvr40_52 Q 2 2 TraditionalCalibrator 2 True True Avg ""
 Rcvr68_92 W 2 2 WBandCalibrator 2 True True Avg ""
 RcvrArray75_115 Argus 16 1 ArgusCalibrator 2 True True Avg ""
