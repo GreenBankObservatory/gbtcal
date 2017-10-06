@@ -1,3 +1,4 @@
+import os
 import numpy
 
 import Calibrators
@@ -64,25 +65,58 @@ def getReceiverTable():
 
 
 def calibrate(projPath, scanNum, calMode, polMode):
-    rcvrTable = getReceiverTable()
+    # rcvrTable = getReceiverTable()
     dataTable = decode(projPath, scanNum)
 
-    return doCalibrate(rcvrTable, dataTable, calMode, polMode)
+    # make TraditionalCalibrator object
+    cal = Calibrators.TraditionalCalibrator(dataTable)
+
+    # call it's oof calibration
+    return cal.calibrateOOF(polMode)
+
+    #return doCalibrate(rcvrTable, dataTable, calMode, polMode)
+
+
+def calibrateToFile(projPath, scanNum, calMode, polMode):
+
+    data = calibrate(projPath, scanNum, calMode, polMode)
+    print("data: ", data)
+    projName = projPath.split('/')[-1]
+    fn = "{}.{}.{}.{}.decode".format(projName, scanNum, calMode, polMode)
+    fnp = os.path.join("/tmp", fn)
+    print("data file: ", fnp)
+    with open(fnp, 'w') as f:
+        f.write(str(list(data[0])))
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("projdir", help="The project directory where fits data is stored (e.g. /home/gbtdata/TGBT15A_901).")
+    parser.add_argument("scannum", help="The scan number for the first scan in the OOF series.", type=int)
+    parser.add_argument("--calmode", help="Raw, TotalPower, or DualBeam", default='Raw')
+    parser.add_argument("--polmode", help="XL, YR, Avg", default='Avg')
 
     # Here we provide a quick and easy way to calibrate stuff:
+    args = parser.parse_args()
+    projPath = args.projdir
+    scanNum = args.scannum
+    calMode = args.calmode
+    polMode = args.polmode
 
+    # calMode = 'DualBeam'
+    # polMode = 'XL'
+    calibrateToFile(projPath, scanNum, calMode, polMode)
     # TBF; derive from args
     # projPath = "/home/archive/science-data/11B/AGBT11B_023_02"
-    scanNum = 1
-    projPath = '/home/archive/science-data/16B/AGBT16B_119_04'
-    # TBF: derive from receivers table
-    calModes = ["Raw", "TotalPower", "DualBeam"]
-    polModes = ["XL", "YR", "Avg"]
-    print("Calibrating scan {}, proj {}".format(scanNum, projPath))
-    for cal in calModes:
-        for pol in polModes:
-            print("Calibrating for {}, {}".format(cal, pol))
-            data = calibrate(projPath, scanNum, cal, pol)
+    # scanNum = 1
+    # # projPath = '/home/archive/science-data/16B/AGBT16B_119_04'
+    # projPath = '/home/archive/science-data/12A/AGBT12A_364_02'
+    # # TBF: derive from receivers table
+    # calModes = ["Raw", "TotalPower", "DualBeam"]
+    # polModes = ["XL", "YR", "Avg"]
+    # print("Calibrating scan {}, proj {}".format(scanNum, projPath))
+    # for cal in calModes:
+    #     for pol in polModes:
+    #         print("Calibrating for {}, {}".format(cal, pol))
+    #         data = calibrate(projPath, scanNum, cal, pol)

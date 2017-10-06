@@ -218,6 +218,98 @@ class Calibrator(object):
 
 
 class TraditionalCalibrator(Calibrator):
+
+    def calibrateOOF(self, pol):
+
+        table = self.ifDcrDataTable
+
+        table.add_column(
+            Column(name='FACTOR',
+                   dtype=numpy.float64,
+                   data=numpy.ones(len(table))))
+
+        self.findCalFactors(table)
+
+
+        feed, refFeed  = self.determineTrackFeed(table)
+
+        # import ipdb; ipdb.set_trace()
+
+        # get on & off for tracking beam
+        freq = self.getFreqForData(table, feed, pol)
+        # rawPower = self.getRawPower(table, feed, pol, freq)
+
+        sigref = 0
+        cal = 1
+        mask = (
+            (table['FEED'] == feed) &
+            (table['SIGREF'] == sigref) &
+            (table['CAL'] == cal) &
+            (table['CENTER_SKY'] == freq) &
+            (table['POLARIZE'] == pol)
+        )
+
+        onData = table[mask]['DATA']
+
+        cal = 0
+        mask = (
+            (table['FEED'] == feed) &
+            (table['SIGREF'] == sigref) &
+            (table['CAL'] == cal) &
+            (table['CENTER_SKY'] == freq) &
+            (table['POLARIZE'] == pol)
+        )
+
+        offData = table[mask]['DATA']
+        feed1tcal = table[mask]['FACTOR'][0]
+
+
+        # calculate something w/ that
+        count = (onData - offData).mean() 
+        feed1calib = 0.5 *  (onData + offData) / count
+
+        # get tcal for both beams
+        # get on & off for ref beam
+        # feeds = table.getUnique('FEED')
+        # refFeed = [f for f in feeds if f != feed][0]
+        freq = self.getFreqForData(table, refFeed, pol)
+        # rawPower = self.getRawPower(table, feed, pol, freq)
+
+        sigref = 0
+        cal = 1
+        mask = (
+            (table['FEED'] == refFeed) &
+            (table['SIGREF'] == sigref) &
+            (table['CAL'] == cal) &
+            (table['CENTER_SKY'] == freq) &
+            (table['POLARIZE'] == pol)
+        )
+
+        onData = table[mask]['DATA']
+
+        cal = 0
+        mask = (
+            (table['FEED'] == refFeed) &
+            (table['SIGREF'] == sigref) &
+            (table['CAL'] == cal) &
+            (table['CENTER_SKY'] == freq) &
+            (table['POLARIZE'] == pol)
+        )
+
+        offData = table[mask]['DATA']
+        feed2tcal = table[mask]['FACTOR'][0]
+
+        # calculate something w/ that
+        count = (onData - offData).mean() 
+        tcalQuot = feed2tcal / feed1tcal
+        feed2calib = (0.5 *  (onData + offData) / count) * tcalQuot
+
+        # find difference
+        # return feed1calib - feed2calib
+        # OOF gets this backwards, so so will us
+        return feed2calib - feed1calib
+
+
     def findCalFactors(self, table):
         receiver = table.meta['RECEIVER']
 

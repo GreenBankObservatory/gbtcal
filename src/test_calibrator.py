@@ -128,3 +128,19 @@ class TestAgainstSparrowResults(unittest.TestCase):
 
     def testRcvr75_115(self):
         pass
+
+    def testRcvr40_52OOF(self):
+
+        testDataProjName = "TPTCSOOF_091031"
+        projPath = "../test/data/{}".format(testDataProjName)
+        scanNum = 45
+        dataTable = decode(projPath, scanNum)
+
+        # make TraditionalCalibrator object
+        cal = TraditionalCalibrator(dataTable)
+
+        # call it's oof calibration
+        data = cal.calibrateOOF('L')
+
+        self.assertAlmostEqual(-2.43800002314, data[0][0], 6)
+        self.assertAlmostEqual(-2.25389923142, data[0][-1], 6)
