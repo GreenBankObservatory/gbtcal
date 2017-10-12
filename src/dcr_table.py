@@ -177,8 +177,12 @@ class DcrTable(StrippedTable):
         phaseStateTable.add_column(Column(name='PHASE',
                                           data=numpy.arange(len(phaseStateTable))))
 
-        # TODO: What is the proper way to find all combinations of these two lists?
-        stuff = []
+        filteredIfTable.add_column(Column(
+            name='DATA',
+            dtype=dcrDataTable['DATA'].dtype,
+            shape=dcrDataTable['DATA'].shape[0],
+            length=len(filteredIfTable)
+        ))
 
         # This is a reasonable assert to make, but it will fail when the IF FITS
         # only has a *subset* of the ports used by the DCR.  Sparrow ignores ports
@@ -186,20 +190,11 @@ class DcrTable(StrippedTable):
         #assert len(uniquePorts) == dcrDataTable['DATA'].shape[1]
         if len(uniquePorts) != dcrDataTable['DATA'].shape[1]:
             print("WARNING: IF ports are only a subset of DCR ports used")
-
-        reshapedData = dcrDataTable['DATA'].reshape(len(dcrDataTable),
-                                                    len(uniquePorts),
-                                                    len(uniqueSigRefStates),
-                                                    len(uniqueCalStates))
-        if len(uniquePorts) != reshapedData.shape[1]:
-            eprint("Invalid shape? These should be equal: len(uniquePorts): "
-                   "{}; reshapedData.shape[1]: {}"
-                   .format(len(uniquePorts), reshapedData.shape[1]))
-
         # TODO: I wonder if there is a way to avoid looping here altogether?
         for portIndex, port in enumerate([port + 1 for port in uniquePorts]):
-            for sigRefState in uniqueSigRefStates:
-                for calState in uniqueCalStates:
+            # TODO: Combine these into one?
+            for sigRefStateIndex, sigRefState in enumerate(uniqueSigRefStates):
+                for calStateIndex, calState in enumerate(uniqueCalStates):
                     phaseMask = (
                         (phaseStateTable['SIGREF'] == sigRefState) &
                         (phaseStateTable['CAL'] == calState)
@@ -211,23 +206,24 @@ class DcrTable(StrippedTable):
                                          "and CAL ({})"
                                          .format(sigRefState, calState))
                     phase = phaseStateTable[phaseMask]['PHASE'][0]
-                    dataForPortAndPhase = dcrDataTable['DATA'][...,
-                                                               portIndex, phase]
-                    if not numpy.all(dataForPortAndPhase ==
-                                     reshapedData[..., portIndex, sigRefState, calState]):
-                        eprint(
-                            "Phase method data does not match reshape method data!")
-
-                    stuff.append(dcrDataTable['DATA'][..., portIndex, phase])
-
-        filteredIfTable.add_column(Column(name='DATA', data=stuff))
-        # TODO: Uncomment this if we are doing L band... something about
-        # redundant data that needs to be removed
-        # return filteredIfTable[filteredIfTable['PORT'] <= 3]
+                    # Calculate the index of our 1D column from where we are
+                    # in our 3D data
+                    dataColumnIndex = (
+                        (portIndex * (len(uniqueSigRefStates) * len(uniqueCalStates))) +
+                        (sigRefStateIndex * len(uniqueCalStates)) +
+                        calStateIndex
+                    )
+                    # Slice out our data. We want data from every row of DATA (::),
+                    # but we only want the data in the nth dimension of the
+                    # mth dimension, where m = portIndex and n = phase
+                    dataRow = dcrDataTable['DATA'][::, portIndex, phase]
+                    filteredIfTable['DATA'][dataColumnIndex] = dataRow
 
         projPath = os.path.dirname(os.path.dirname(dcrHdu.filename()))
         filteredIfTable.meta['PROJPATH'] = os.path.realpath(projPath)
 
+        # TODO: This really shouldn't be here, but is currently needed due
+        # to some weird thing over in the calibration code
         filteredIfTable.add_column(
             Column(name='INDEX', data=numpy.arange(len(filteredIfTable))))
 
