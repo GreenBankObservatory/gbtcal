@@ -5,6 +5,7 @@ import Calibrators
 from rcvr_table import ReceiverTable
 from constants import CALOPTS, POLOPTS
 from dcr_decode import decode
+import calalgorithm
 
 
 def doCalibrate(receiverTable, dataTable, calMode, polMode):
@@ -31,8 +32,20 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
         else:
             raise ValueError(":(")
 
-    doGain = calMode != CALOPTS.RAW
-    refBeam = calMode == CALOPTS.DUALBEAM or calMode == CALOPTS.BEAMSWITCHEDTBONLY
+    doGain = True
+    # doGain = calMode != CALOPTS.RAW
+
+    try:
+        validCalOptsForReceiver = receiverRow['Cal Options']
+    except IndexError:
+        raise ValueError("Cal Options do not exist for receiver {}!"
+                         .format(receiver))
+
+    if calMode not in eval(validCalOptsForReceiver[0]):
+        raise ValueError("Selected algorithm {} is not supported by receiver {}"
+                         .format(calMode, receiver))
+
+    algClass = getattr(calalgorithm, calMode)
 
     try:
         calibratorClass = getattr(Calibrators, calibratorStr)
@@ -43,7 +56,7 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
                          "up to date."
                          .format(receiver, calibratorStr))
 
-    return calibratorClass(dataTable).calibrate(polOption, doGain, refBeam)
+    return calibratorClass(dataTable, algClass).calibrate(polOption, doGain)
 
 
 def validateOptions(rcvrRow, calMode, polMode):
@@ -65,16 +78,16 @@ def getReceiverTable():
 
 
 def calibrate(projPath, scanNum, calMode, polMode):
-    # rcvrTable = getReceiverTable()
+    rcvrTable = getReceiverTable()
     dataTable = decode(projPath, scanNum)
 
     # make TraditionalCalibrator object
-    cal = Calibrators.TraditionalCalibrator(dataTable)
+    # cal = Calibrators.TraditionalCalibrator(dataTable)
 
     # call it's oof calibration
-    return cal.calibrateOOF(polMode)
+    # return cal.calibrateOOF(polMode)
 
-    #return doCalibrate(rcvrTable, dataTable, calMode, polMode)
+    return doCalibrate(rcvrTable, dataTable, calMode, polMode)
 
 
 def calibrateToFile(projPath, scanNum, calMode, polMode):

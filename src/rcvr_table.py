@@ -15,18 +15,18 @@ class ReceiverTable(Table):
 
     @classmethod
     def _addDerivedColumns(cls, table):
-        calOpts = [cls._deriveCalibrationOptions(table, receiver)
-                   for receiver in table['M&C Name']]
+        # calOpts = [cls._deriveCalibrationOptions(table, receiver)
+        #            for receiver in table['M&C Name']]
         polOpts = [cls._derivePolarizationOptions(table, receiver)
                    for receiver in table['M&C Name']]
 
-        calOptsCol = Column(name='Cal Options',
-                            data=calOpts)
+        # calOptsCol = Column(name='Cal Options',
+        #                     data=calOpts)
 
         polOptsCol = Column(name='Pol Options',
                             data=polOpts)
 
-        table.add_column(calOptsCol)
+        # table.add_column(calOptsCol)
         table.add_column(polOptsCol)
         return table
 
@@ -56,4 +56,5 @@ class ReceiverTable(Table):
 if __name__ == '__main__':
     receiverTable = ReceiverTable.load('rcvrTable.csv')
     # print(receiverTable)
+    import ipdb; ipdb.set_trace()
     receiverTable.printFull()

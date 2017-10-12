@@ -13,10 +13,11 @@ from util import wprint
 
 
 class Calibrator(object):
-    def __init__(self, ifDcrDataTable):
+    def __init__(self, ifDcrDataTable, calAlg):
         self._ifDcrDataTable = ifDcrDataTable
         self.projPath = ifDcrDataTable.meta['PROJPATH']
         self.scanNum = ifDcrDataTable.meta['SCAN']
+        self.calAlg = calAlg()
 
     @property
     def ifDcrDataTable(self):
@@ -26,7 +27,7 @@ class Calibrator(object):
         raise NotImplementedError("findCalFactors() must be implemented for "
                                   "all Calibrator subclasses!")
 
-    def doMath(self, table, doGain, polOption, refBeam):
+    def doMathOld(self, table, doGain, polOption, refBeam):
         """Set up the calculations for all calibration types."""
         # handle single pols, or averages
         allPols = numpy.unique(table['POLARIZE'])
@@ -204,7 +205,7 @@ class Calibrator(object):
 
         return feedTable['CENTER_SKY'][0]
 
-    def calibrate(self, polOption, doGain, refBeam):
+    def calibrate(self, polOption, doGain):
         newTable = self.ifDcrDataTable.copy()
 
         newTable.add_column(
@@ -214,7 +215,8 @@ class Calibrator(object):
         if doGain:
             self.findCalFactors(newTable)
 
-        return self.doMath(newTable, doGain, polOption, refBeam)
+        # TODO: polOption is really a single pol
+        return self.calAlg.calibrate(newTable, polOption)
 
 
 class TraditionalCalibrator(Calibrator):
@@ -265,7 +267,7 @@ class TraditionalCalibrator(Calibrator):
 
 
         # calculate something w/ that
-        count = (onData - offData).mean() 
+        count = (onData - offData).mean()
         feed1calib = 0.5 *  (onData + offData) / count
 
         # get tcal for both beams
@@ -300,7 +302,7 @@ class TraditionalCalibrator(Calibrator):
         feed2tcal = table[mask]['FACTOR'][0]
 
         # calculate something w/ that
-        count = (onData - offData).mean() 
+        count = (onData - offData).mean()
         tcalQuot = feed2tcal / feed1tcal
         feed2calib = (0.5 *  (onData + offData) / count) * tcalQuot
 
