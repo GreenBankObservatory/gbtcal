@@ -67,6 +67,7 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
     # are given, we'll just keep the whole table
     filteredTable = dataTable.query(**queryParams)
 
+    import ipdb; ipdb.set_trace()
     return Calibrator(
         filteredTable,
         attenuator,

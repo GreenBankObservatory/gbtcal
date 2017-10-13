@@ -124,6 +124,7 @@ class Calibrator(object):
 
     def calibrate(self):
         calTable = self.initCalTable()
+        import ipdb; ipdb.set_trace()
         if self.attenuator:
             # If we have an attenuator, then use it. This will
             # attenuate the data and populate the calData DATA column
@@ -134,10 +135,10 @@ class Calibrator(object):
             # taking while the cal diode was on
             logger.info("Removing CAL on data...")
             self.getCalOffData(calTable)
-
         # So, we now have a calData table with a populated DATA column,
         # ready for the next stage
 
+        import ipdb; ipdb.set_trace()
         feedTable = self.initFeedTable(calTable)
         if self.interPolCalibrator:
             # If we have an inter-pol calibrator, then use it. This will
@@ -150,6 +151,7 @@ class Calibrator(object):
             # that now...
             self.getSigFeedData(feedTable, calTable)
 
+        import ipdb; ipdb.set_trace()
         sigFeed = self.table.meta['TRCKBEAM']
         if self.interBeamCalibrator:
             import ipdb; ipdb.set_trace()
@@ -159,7 +161,7 @@ class Calibrator(object):
                                            feedTable[refFeed])
         else:
             data = feedTable[feedTable['FEED'] == sigFeed]['DATA']
-
+        import ipdb; ipdb.set_trace()
         return data
 
 
