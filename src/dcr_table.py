@@ -232,3 +232,41 @@ class DcrTable(StrippedTable):
             Column(name='INDEX', data=numpy.arange(len(filteredIfTable))))
 
         return filteredIfTable
+
+    # def average(self, array1, array2):
+    #     numpy.sum(polPowers, axis=0) / len(pols)
+
+    # def difference():
+    #     pass
+
+
+    def query(self, **kwargs):
+        selections = kwargs
+        print(selections)
+        for column, value in selections.items():
+            mask = self[column] == value
+            self = self[mask]
+        return self
+
+    def _getCalData(self, calState):
+        data = self.query(CAL=calState)['DATA']
+        if len(data) != 1:
+            raise ValueError("Cannot unambiguously retrieve CAL state; "
+                             "got more than one row!")
+
+        return data[0]
+
+    def getCalOnData(self):
+        return self._getCalData(1)
+
+    def getCalOffData(self):
+        return self._getCalData(0)
+
+    def getFactor(self):
+        if 'FACTOR' not in self.columns:
+            raise ValueError('FACTOR Column has not yet been added!')
+
+        if len(self.getUnique('FACTOR')) != 1:
+            raise ValueError("Cannot unambiguously determine FACTOR; "
+                             "there are multiple values present!")
+        return self['FACTOR'][0]

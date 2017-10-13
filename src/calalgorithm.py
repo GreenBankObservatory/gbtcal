@@ -8,25 +8,29 @@ class Algorithm(object):
     def calibrate(self, table, pol):
         raise NotImplementedError("calibrate() must be implemented!")
 
-    def determineTrackFeed(self, table):
+    def getSigRefFeeds(self, table):
         feeds = table.getUnique('FEED')
         trackBeam = table.meta['TRCKBEAM']
-        if len(feeds) < 2:
-            raise ValueError("Must have at least two feeds to determine "
-                             "the tracking/reference feeds")
-        elif len(feeds > 2):
-            wprint("More than two feeds provided; reference feed will be "
-                   "ambiguous")
 
-        if trackBeam == feeds[0]:
+        #     raise ValueError("Must have at least two feeds to determine "
+        #                      "the tracking/reference feeds")
+        if len(feeds) > 2:
+            wprint("More than two feeds provided; selecting second feed as "
+                   "reference feed!")
+
+        if len(feeds) < 2:
             sig = feeds[0]
-            ref = feeds[1]
+            ref = None
         else:
-            sig = feeds[1]
-            ref = feeds[0]
+            if trackBeam == feeds[0]:
+                sig = feeds[0]
+                ref = feeds[1]
+            else:
+                sig = feeds[1]
+                ref = feeds[0]
         return sig, ref
 
-    def getFreqForData(self, table, feed, pol):
+    def getFreq(self, table, feed, pol):
         """
         Get the first data's frequency that has the given feed and polarization
         """
@@ -56,6 +60,10 @@ class RawAlgorithm(Algorithm):
     def getSignalRawPower(self, table, pol):
         """Simply get the raw power, for the right phase"""
         phases = table.getUnique(['SIGREF', 'CAL'])
+        sigFeed, _  = self.getSigRefFeeds(table)
+
+        freq = self.getFreq(table, sigFeed, pol)
+
 
         # Default phase to SIGREF=0, CAL=0
         # TODO: Why are we doing this?
@@ -63,7 +71,7 @@ class RawAlgorithm(Algorithm):
         sigref, cal = phase
 
         mask = (
-            (table['FEED'] == feed) &
+            (table['FEED'] == sigFeed) &
             (table['SIGREF'] == sigref) &
             (table['CAL'] == cal) &
             (table['CENTER_SKY'] == freq) &
@@ -87,9 +95,13 @@ class RawAlgorithm(Algorithm):
             # bail if we simply don't have that phase
             return None
 
+        _, refFeed  = self.getSigRefFeeds(table)
+
+        freq = self.getFreq(table, refFeed, pol)
+
         sigref, cal = refPhase
         mask = (
-            (table['FEED'] == feed) &
+            (table['FEED'] == refFeed) &
             (table['SIGREF'] == sigref) &
             (table['CAL'] == cal) &
             (table['CENTER_SKY'] == freq) &
@@ -110,7 +122,6 @@ class RawAlgorithm(Algorithm):
         return (sig - ref) if ref is not None else sig
 
 class TotalPowerAlgorithm(Algorithm):
-
     def getAntennaTemperature(self, calOnData, calOffData, tCal):
         countsPerKelvin = (numpy.sum((calOnData - calOffData) / tCal) /
                            len(calOnData))
@@ -124,7 +135,7 @@ class TotalPowerAlgorithm(Algorithm):
         if feed is None:
             feed = table.meta['TRCKBEAM']
 
-        freq = self.getFreqForData(table, feed, pol)
+        freq = self.getFreq(table, feed, pol)
 
         mask = (
             (table['FEED'] == feed) &
@@ -171,9 +182,9 @@ class TotalPowerAlgorithm(Algorithm):
 
 class OofDBA(Algorithm):
     def calibrate(self, table, pol):
-        sigFeed, refFeed  = self.determineTrackFeed(table)
+        sigFeed, refFeed  = self.getSigRefFeeds(table)
 
-        freq = self.getFreqForData(table, sigFeed, pol)
+        freq = self.getFreq(table, sigFeed, pol)
 
         sigref = 0
         cal = 1
@@ -208,7 +219,7 @@ class OofDBA(Algorithm):
         # get on & off for ref beam
         # feeds = table.getUnique('FEED')
         # refFeed = [f for f in feeds if f != sigFeed][0]
-        freq = self.getFreqForData(table, refFeed, pol)
+        freq = self.getFreq(table, refFeed, pol)
         # rawPower = self.getRawPower(table, sigFeed, pol, freq)
 
         sigref = 0
@@ -248,7 +259,7 @@ class OofDBA(Algorithm):
 class BeamSubtractionDBA(TotalPowerAlgorithm):
     def calibrate(self, table, pol):
         """Here we're just finding the difference between the two beams"""
-        sigFeed, refFeed = self.determineTrackFeed(table)
+        sigFeed, refFeed = self.getSigRefFeeds(table)
         sigFeedCalData = super(BeamSubtractionDBA,
                                self).calibrate(table, pol, feed=sigFeed)
         refFeedCalData = super(BeamSubtractionDBA,

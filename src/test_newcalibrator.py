@@ -1,0 +1,236 @@
+import ast
+import unittest
+
+from astropy.table import Column
+import numpy
+
+from dcr_decode import decode
+from calibrate import doCalibrate
+from newcalibrator import Calibrator as NewCalibrator
+from newcalibrate import BeamSubtractionDBA, InterPolAverage
+from attenuate import CalDiodeAttenuate
+from rcvr_table import ReceiverTable
+from constants import POLOPTS, CALOPTS
+
+def readResultsFile(filepath):
+    with open(filepath) as f:
+        stuff = ast.literal_eval(f.read())
+    return stuff
+
+def arraySummary(array):
+        return "[{} ... {}]".format(array[0], array[-1])
+
+class TestCalibrate(unittest.TestCase):
+    def setUp(self):
+        self.receiverTable = ReceiverTable.load('rcvrTable.test.csv')
+
+
+
+    def getScanNum(self, testProjPath):
+        """Given a test project path, derive the scan number and return it.
+        testProjPath must be of the format:
+        "<projName>:<scanNum>:<receiver>" or a ValueError will be raised
+        """
+        decomposedPath = testProjPath.split(":")
+        if len(decomposedPath) != 3:
+            raise ValueError("testProjPath must be of the format "
+                             "<projName>:<scanNum>:<receiver>; got {}"
+                             .format(testProjPath))
+
+        return int(decomposedPath[1])
+
+    def _testCalibrate(self, testDataProjName, optionsToIgnore=[]):
+        projPath = "../test/data/{}".format(testDataProjName)
+        scanNum = self.getScanNum(projPath)
+        expectedResultsPath = "../test/results/{}".format(testDataProjName)
+        expectedResults = readResultsFile(expectedResultsPath)
+
+        table = decode(projPath, scanNum)
+        for option in optionsToIgnore:
+            if option in expectedResults:
+                del expectedResults[option]
+        for calOption, result in expectedResults.items():
+            print("CALOPT:", calOption)
+            actual = doCalibrate(self.receiverTable, table, *calOption)
+            expected = numpy.array(result)
+            # TODO: ROUNDING??? WAT
+            if (calOption[0] == CALOPTS.RAW and
+                    calOption[1] == POLOPTS.AVG):
+                actual = numpy.floor(actual)
+            self.assertTrue(numpy.allclose(actual, expected),
+                            "Test for {} failed: {} != {}"
+                            .format(calOption,
+                                    arraySummary(actual),
+                                    arraySummary(expected)))
+
+    def test_single_beam_single_pol_no_atten(self):
+        pass
+
+    def test_single_beam_single_pol_with_atten(self):
+        pass
+
+    def test_dual_beam_single_pol_no_atten(self):
+        pass
+
+    def test_dual_beam_single_pol_with_atten(self):
+        pass
+
+    def test_dual_beam_avg_pol_no_atten(self):
+        pass
+
+    def test_dual_beam_avg_pol_with_atten(self):
+        pass
+
+    def test_dual_beam_avg_pol_with_atten(self):
+        projPath = "../test/data/{}".format("AVLB17A_182_04:2:Rcvr68_92")
+        scanNum = self.getScanNum(projPath)
+        table = decode(projPath, scanNum)
+        cal = NewCalibrator(table, CalDiodeAttenuate())
+        cal.calibrate(True, False, False)
+
+    def test_oof(self):
+        projPath = "../test/data/{}".format("AGBT16A_473_01:1:Rcvr40_52")
+        scanNum = self.getScanNum(projPath)
+        table = decode(projPath, scanNum)
+
+
+        # User provides:
+        polOpt = 'XL'
+        calOpt = ''
+        # from selector import OofSelector
+        # os = OofSelector()
+
+        import ipdb; ipdb.set_trace()
+        cal = NewCalibrator(table, CalDiodeAttenuate())
+        cal.calibrate(True, False, False)
+
+
+
+    def test_lband(self):
+        projPath = "../test/data/{}".format("AGBT16B_285_01:1:Rcvr1_2")
+        scanNum = self.getScanNum(projPath)
+        table = decode(projPath, scanNum)
+
+        table.add_column(
+            Column(name='FACTOR',
+                   dtype=numpy.float64,
+                   data=numpy.ones(len(table))))
+
+        from Calibrators import TraditionalCalibrator
+        TraditionalCalibrator(table, None).findCalFactors(table)
+
+
+        # User provides:
+        polOpt = 'XL'
+        calOpt = 'TotalPower'
+
+        # Do the mapping by hand for now
+        # selector =
+        # Needs on and off data and tcal
+        attenuator = CalDiodeAttenuate()
+        polCal = None
+        beamCal = None
+
+        # TODO: Translate XL -> X
+        filteredTable = table.query(POLARIZE='X', FEED=table.meta['TRCKBEAM'])
+        print(filteredTable)
+        cal = NewCalibrator(filteredTable, attenuator, polCal, beamCal)
+        cal.calibrate()
+        import ipdb; ipdb.set_trace()
+
+    def test_lband_tp_avg(self):
+        projPath = "../test/data/{}".format("AGBT16B_285_01:1:Rcvr1_2")
+        scanNum = self.getScanNum(projPath)
+        table = decode(projPath, scanNum)
+
+        table.add_column(
+            Column(name='FACTOR',
+                   dtype=numpy.float64,
+                   data=numpy.ones(len(table))))
+
+        from Calibrators import TraditionalCalibrator
+        TraditionalCalibrator(table, None).findCalFactors(table)
+
+
+        # User provides:
+        polOpt = 'Avg'
+        calOpt = 'TotalPower'
+
+        # Do the mapping by hand for now
+        # selector =
+        # Needs on and off data and tcal
+        attenuator = CalDiodeAttenuate()
+        polCal = InterPolAverage()
+        beamCal = None
+
+        # TODO: Translate XL -> X
+        filteredTable = table.query(FEED=table.meta['TRCKBEAM'])
+        print(filteredTable)
+        cal = NewCalibrator(filteredTable, attenuator, polCal, beamCal)
+        cal.calibrate()
+        import ipdb; ipdb.set_trace()
+
+    def test_new(self):
+        self._testCalibrate("AGBT16B_285_01:1:Rcvr1_2")
+
+    def test_lband_raw_avg(self):
+        # No atten, but avg pols
+        projPath = "../test/data/{}".format("AGBT16B_285_01:1:Rcvr1_2")
+        scanNum = self.getScanNum(projPath)
+        table = decode(projPath, scanNum)
+
+        table.add_column(
+            Column(name='FACTOR',
+                   dtype=numpy.float64,
+                   data=numpy.ones(len(table))))
+
+        from Calibrators import TraditionalCalibrator
+        TraditionalCalibrator(table, None).findCalFactors(table)
+
+
+        # User provides:
+        polOpt = 'Avg'
+        calOpt = 'Raw'
+
+        # Do the mapping by hand for now
+        # selector =
+        # Needs on and off data and tcal
+        attenuator = None
+        polCal = InterPolAverage()
+        beamCal = None
+
+        # TODO: Translate XL -> X
+        filteredTable = table.query(FEED=table.meta['TRCKBEAM'])
+        print(filteredTable)
+        cal = NewCalibrator(filteredTable, attenuator, polCal, beamCal)
+        calTable = cal.calibrate()
+        import ipdb; ipdb.set_trace()
+
+    def test_qband(self):
+        # User provides:
+        polOpt = 'XL'
+        calOpt = 'DualBeam'
+        # Do the mapping by hand for now
+        # selector =
+        # Needs on and off data and tcal
+        attenuator = CalDiodeAttenuate()
+        polCal = None
+        beamCal = BeamSubtractionDBA()
+
+        projPath = "../test/data/{}".format("AGBT16A_473_01:1:Rcvr40_52")
+        scanNum = self.getScanNum(projPath)
+        table = decode(projPath, scanNum)
+
+        table.add_column(
+            Column(name='FACTOR',
+                   dtype=numpy.float64,
+                   data=numpy.ones(len(table))))
+
+        from Calibrators import TraditionalCalibrator
+        TraditionalCalibrator(table, None).findCalFactors(table)
+
+
+        filteredTable = table.query(POLARIZE='L')
+
+        cal = NewCalibrator(filteredTable, attenuator, polCal, beamCal)
+        cal.calibrate()

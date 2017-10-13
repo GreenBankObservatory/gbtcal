@@ -64,7 +64,9 @@ class TestAgainstSparrowResults(unittest.TestCase):
         for option in optionsToIgnore:
             if option in expectedResults:
                 del expectedResults[option]
+
         for calOption, result in expectedResults.items():
+            print("CALOPTION:", calOption)
             actual = doCalibrate(self.receiverTable, table,
                                  *calOption)
             expected = numpy.array(result)

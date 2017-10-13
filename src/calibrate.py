@@ -1,21 +1,17 @@
 import os
 import numpy
 
-import Calibrators
+from newcalibrator import Calibrator
 from rcvr_table import ReceiverTable
 from constants import CALOPTS, POLOPTS
 from dcr_decode import decode
-import calalgorithm
+import attenuate
+import newcalibrate
 
 
 def doCalibrate(receiverTable, dataTable, calMode, polMode):
     receiver = dataTable.meta['RECEIVER']
     receiverRow = receiverTable.getReceiverInfo(receiver)
-    try:
-        calibratorStr = receiverRow['Cal Strategy'][0]
-    except IndexError:
-        raise ValueError("Receiver '{}' does not exist in the receiver table!"
-                         .format(receiver))
 
     validateOptions(receiverRow, calMode, polMode)
 
@@ -32,41 +28,61 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
         else:
             raise ValueError(":(")
 
-    doGain = True
-    # doGain = calMode != CALOPTS.RAW
 
-    try:
-        validCalOptsForReceiver = receiverRow['Cal Options']
-    except IndexError:
-        raise ValueError("Cal Options do not exist for receiver {}!"
-                         .format(receiver))
+    attenuator = None
+    interPolCal = None
+    interBeamCal = None
+    queryParams = {}
 
-    if calMode not in eval(validCalOptsForReceiver[0]):
-        raise ValueError("Selected algorithm {} is not supported by receiver {}"
-                         .format(calMode, receiver))
+    if calMode != CALOPTS.RAW:
+        # If the user has requested that we do any mode other than raw
+        # it is assumed that we do attenuation
+        attenuatorName = receiverRow['Attenuator'][0]
+        attenuator = getattr(attenuate, attenuatorName)()
 
-    algClass = getattr(calalgorithm, calMode)
+    if polMode == POLOPTS.AVG:
+        # If the user has requested that we do polarization averaging,
+        # we need to enable our interPolCal
+        interPolCalName = receiverRow['InterPolCal'][0]
+        interPolCal = getattr(newcalibrate, interPolCalName)()
+    else:
+        # Otherwise we set polarize to the parsed polMode, polOption.
+        # So, it will be one of X, Y, R, or L. Since we are not
+        # averaging pols, we will instead be simply selecting a
+        # polarization -- this is the one to select
+        queryParams['POLARIZE'] = polOption
 
-    try:
-        calibratorClass = getattr(Calibrators, calibratorStr)
-    except AttributeError:
-        raise ValueError("Receiver {}'s indicated calibration "
-                         "strategy '{}' could not be found! Please "
-                         "check the receiver table to ensure it is "
-                         "up to date."
-                         .format(receiver, calibratorStr))
+    if calMode in [CALOPTS.DUALBEAM, CALOPTS.BEAMSWITCHEDTBONLY]:
+        # If the user has selected a mode that operates on two beams,
+        # enable our interBeamCal
+        interBeamCalName = receiverRow['InterBeamCal'][0]
+        interBeamCal = getattr(newcalibrate, interBeamCalName)()
+    else:
+        # Otherwise we set feed to the track beam. This is the signal
+        # beam, and it is what we care about when doing total power, etc.
+        # InterBeamCal needs two beams; here we only need one
+        queryParams['FEED'] = dataTable.meta['TRCKBEAM']
 
-    return calibratorClass(dataTable, algClass).calibrate(polOption, doGain)
+    # Filter the table based on the above query parameters. If none
+    # are given, we'll just keep the whole table
+    filteredTable = dataTable.query(**queryParams)
+
+    return Calibrator(
+        filteredTable,
+        attenuator,
+        interPolCal,
+        interBeamCal
+    ).calibrate()
 
 
 def validateOptions(rcvrRow, calMode, polMode):
     rcvrName = rcvrRow['M&C Name'][0]
-    calOptions = rcvrRow['Cal Options'][0]
+    # calOptions = rcvrRow['Cal Options'][0]
     polOptions = rcvrRow['Pol Options'][0]
-    if calMode not in calOptions:
-        raise ValueError("calMode '{}' is invalid for receiver {}. "
-                         "Must be one of {}"
-                         .format(calMode, rcvrName, calOptions))
+    # if calMode not in calOptions:
+    #     raise ValueError("calMode '{}' is invalid for receiver {}. "
+    #                      "Must be one of {}"
+    #                      .format(calMode, rcvrName, calOptions))
     if polMode not in polOptions:
         raise ValueError("polMode '{}' is invalid for receiver {}. "
                          "Must be one of {}"

@@ -13,11 +13,10 @@ from util import wprint
 
 
 class Calibrator(object):
-    def __init__(self, ifDcrDataTable, calAlg):
+    def __init__(self, ifDcrDataTable):
         self._ifDcrDataTable = ifDcrDataTable
         self.projPath = ifDcrDataTable.meta['PROJPATH']
         self.scanNum = ifDcrDataTable.meta['SCAN']
-        self.calAlg = calAlg()
 
     @property
     def ifDcrDataTable(self):
@@ -27,7 +26,7 @@ class Calibrator(object):
         raise NotImplementedError("findCalFactors() must be implemented for "
                                   "all Calibrator subclasses!")
 
-    def doMathOld(self, table, doGain, polOption, refBeam):
+    def doMath(self, table, doGain, polOption, refBeam):
         """Set up the calculations for all calibration types."""
         # handle single pols, or averages
         allPols = numpy.unique(table['POLARIZE'])
@@ -205,7 +204,7 @@ class Calibrator(object):
 
         return feedTable['CENTER_SKY'][0]
 
-    def calibrate(self, polOption, doGain):
+    def calibrate(self, polOption, doGain, refBeam):
         newTable = self.ifDcrDataTable.copy()
 
         newTable.add_column(
@@ -215,8 +214,7 @@ class Calibrator(object):
         if doGain:
             self.findCalFactors(newTable)
 
-        # TODO: polOption is really a single pol
-        return self.calAlg.calibrate(newTable, polOption)
+        return self.doMath(newTable, doGain, polOption, refBeam)
 
 
 class TraditionalCalibrator(Calibrator):
@@ -343,9 +341,11 @@ class TraditionalCalibrator(Calibrator):
 
             tCal = getTcal(rcvrCalTable, feed, receptor, pol,
                            highCal, centerSkyFreq, bandwidth)
-            for row in table[mask]:
-                # TODO: Cleaner way of doing this?
-                table[row['INDEX']]['FACTOR'] = tCal
+            # import ipdb; ipdb.set_trace()
+            table['FACTOR'][mask] = tCal
+            # # TODO: Cleaner way of doing this?
+            # for row in table[mask]:
+            #     table[row['INDEX']]['FACTOR'] = tCal
 
     def getAntennaTemperature(self, calOnData, calOffData, tCal):
         countsPerKelvin = (numpy.sum((calOnData - calOffData) / tCal) /
