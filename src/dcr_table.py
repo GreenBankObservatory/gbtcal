@@ -240,27 +240,20 @@ class DcrTable(StrippedTable):
     #     pass
 
 
-    def query(self, **kwargs):
-        selections = kwargs
-        print(selections)
-        for column, value in selections.items():
-            mask = self[column] == value
-            self = self[mask]
-        return self
-
     def _getCalData(self, calState):
         data = self.query(CAL=calState)['DATA']
         if len(data) != 1:
+            import ipdb; ipdb.set_trace()
             raise ValueError("Cannot unambiguously retrieve CAL state; "
                              "got more than one row!")
 
         return data[0]
 
     def getCalOnData(self):
-        return self._getCalData(1)
+        return self._getCalData(calState=1)
 
     def getCalOffData(self):
-        return self._getCalData(0)
+        return self._getCalData(calState=0)
 
     def getFactor(self):
         if 'FACTOR' not in self.columns:

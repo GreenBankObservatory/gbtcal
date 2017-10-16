@@ -1,7 +1,9 @@
-from astropy.table import Column, Table
+from astropy.table import Column
 import numpy
 
-class StrippedTable(Table):
+from querytable import QueryTable
+
+class StrippedTable(QueryTable):
     """An implementation of Table that strips all right padding from
     string columns when calling read()
     """

@@ -1,12 +1,28 @@
+import logging
 import os
 import numpy
 
-from newcalibrator import Calibrator
+import newcalibrator
 from rcvr_table import ReceiverTable
 from constants import CALOPTS, POLOPTS
 from dcr_decode import decode
 import attenuate
 import newcalibrate
+
+def initLogging():
+    """Initialize the logger for this module and return it"""
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    return logger
+
+
+logger = initLogging()
 
 
 def doCalibrate(receiverTable, dataTable, calMode, polMode):
@@ -57,18 +73,41 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
         # enable our interBeamCal
         interBeamCalName = receiverRow['InterBeamCal'][0]
         interBeamCal = getattr(newcalibrate, interBeamCalName)()
-    else:
+    # else:
         # Otherwise we set feed to the track beam. This is the signal
         # beam, and it is what we care about when doing total power, etc.
         # InterBeamCal needs two beams; here we only need one
-        queryParams['FEED'] = dataTable.meta['TRCKBEAM']
+        # queryParams['FEED'] = dataTable.meta['TRCKBEAM']
 
     # Filter the table based on the above query parameters. If none
     # are given, we'll just keep the whole table
     filteredTable = dataTable.query(**queryParams)
 
-    import ipdb; ipdb.set_trace()
-    return Calibrator(
+    logger.debug("Raw IF/DCR data table:\n%s", dataTable)
+    logger.debug("Filtering based on parameters: %s", queryParams)
+    logger.debug("Filtered IF/DCR data table:\n%s", filteredTable)
+
+
+    try:
+        calibratorStr = receiverRow['Cal Strategy'][0]
+    except IndexError:
+        raise ValueError("Receiver '{}' does not exist in the receiver table!"
+                         .format(receiver))
+
+    try:
+        calibratorClass = getattr(newcalibrator, calibratorStr)
+    except AttributeError:
+        raise ValueError("Receiver {}'s indicated calibration "
+                         "strategy '{}' could not be found! Please "
+                         "check the receiver table to ensure it is "
+                         "up to date."
+                         .format(receiver, calibratorStr))
+
+    logger.debug("Beginning calibration with calibrator %s",
+                 calibratorClass.__class__.__name__)
+
+
+    return calibratorClass(
         filteredTable,
         attenuator,
         interPolCal,

@@ -4,6 +4,26 @@ class Attenuate(object):
     def attenuate(self, table):
         pass
 
+class CalSeqAttenuate(Attenuate):
+    def getTotalPower(self, table):
+        """Total power for External Cals is just the off with a gain."""
+        # offTable = table.query(FEED=feed, POLARIZE=pol, CENTER_SKY=freq)
+        offTable = table
+
+        if len(offTable) != 1:
+            raise ValueError("Must be exactly one row for 'off' data")
+
+        # This is an array of a single array, so we extract the inner array
+        offData = offTable['DATA'][0]
+        # Doesn't matter which row we grab this from; they are identical
+        gain = offTable['FACTOR']
+        # Need to put this BACK into an array where the only element is
+        # the actual array
+        calData = gain * (offData - numpy.median(offData))
+        return calData
+
+    def attenuate(self, table):
+        return self.getTotalPower(table)
 
 
 class CalDiodeAttenuate(Attenuate):
@@ -26,3 +46,4 @@ class CalDiodeAttenuate(Attenuate):
 
     def attenuate(self, table):
         return self.getTotalPower(table)
+
