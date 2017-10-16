@@ -8,7 +8,6 @@ def installPythonPackages() {
     source ${venv_name}/bin/activate
     pip install -U pip setuptools
     pip install -r requirements.txt"""
-
 }
 
 node {
