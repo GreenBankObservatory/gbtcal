@@ -12,7 +12,7 @@ def installPythonPackages() {
 
 def testPython() {
     sh """source ./${venv_name}/bin/activate
-    cd tests
+    cd src
     nosetests --nocapture test_calibrator.py"""
 }
 
