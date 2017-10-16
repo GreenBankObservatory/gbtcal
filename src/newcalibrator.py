@@ -1,18 +1,27 @@
 import logging
+import os
 
-from astropy.table import Table, Column
+from astropy.table import Column
+
+from astropy.io import fits
 import numpy
 
 from constants import POLS, POLOPTS, CALOPTS
+from dcr_decode import getFitsForScan, getTcal, getRcvrCalTable
 from util import wprint
-from Calibrators import TraditionalCalibrator
+from querytable import QueryTable
+# from Calibrators import TraditionalCalibrator
+
+from WBandCalibration import WBandCalibration
+
+from ArgusCalibration import ArgusCalibration
 
 
 def initLogging():
     """Initialize the logger for this module and return it"""
 
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -24,35 +33,11 @@ def initLogging():
 logger = initLogging()
 
 class Calibrator(object):
-    def describe(self):
-        print("My name is {}".format(self.__class__.__name__))
-        print("I will be calibrating this data:")
-        print(self.table)
-
-        if self.attenuator:
-            print("I will perform attenuation using: {}"
-                  .format(self.attenuator.__class__.__name__))
-        else:
-            print("I will perform NO attenuation")
-
-        if self.interPolCalibrator:
-            print("I will perform inter-pol calibration using: {}"
-                  .format(self.interPolCalibrator.__class__.__name__))
-        else:
-            print("I will perform NO inter-pol calibration")
-
-        if self.interBeamCalibrator:
-            print("I will perform inter-beam calibration using: {}"
-                  .format(self.interBeamCalibrator.__class__.__name__))
-        else:
-            print("I will perform NO inter-beam calibration")
-
-
     def __init__(self, table,
                  attenuator=None,
                  interPolCalibrator=None,
                  interBeamCalibrator=None):
-        self.table = table
+        self.table = table.copy()
         self.projPath = table.meta['PROJPATH']
         self.scanNum = table.meta['SCAN']
         self.attenuator = attenuator
@@ -65,22 +50,54 @@ class Calibrator(object):
                    data=numpy.ones(len(self.table))
             )
         )
+        self.findCalFactors()
+
         self.describe()
 
-        # import ipdb; ipdb.set_trace()
-        TraditionalCalibrator(self.table).findCalFactors(self.table)
+    def describe(self):
+        logger.info("My name is %s", self.__class__.__name__)
+        logger.info("I will be calibrating this data:\n%s",
+                    self.table)
 
-        print("-" * 70)
-        print("BEGIN CALIBRATION")
+        if self.attenuator:
+            logger.info("I will perform attenuation using: %s",
+                        self.attenuator.__class__.__name__)
+        else:
+            logger.info("I will perform NO attenuation")
+
+        if self.interPolCalibrator:
+            logger.info("I will perform inter-pol calibration using: %s",
+                        self.interPolCalibrator.__class__.__name__)
+        else:
+            logger.info("I will perform NO inter-pol calibration")
+
+        if self.interBeamCalibrator:
+            logger.info("I will perform inter-beam calibration using: %s",
+                        self.interBeamCalibrator.__class__.__name__)
+        else:
+            logger.info("I will perform NO inter-beam calibration")
 
     def initCalTable(self):
-        calTable = Table(self.table.getUnique(['FEED', 'POLARIZE']))
+        calTable = QueryTable(self.table.getUnique(['FEED', 'POLARIZE']))
         calTable.add_column(Column(name='DATA',
                                    length=len(calTable),
                                    dtype=numpy.float64,
                                    shape=self.table['DATA'].shape[1]))
 
         return calTable
+
+    def initFeedTable(self, calTable):
+        feedTable = QueryTable([numpy.unique(calTable['FEED'])])
+        feedTable.add_column(Column(name='DATA',
+                                    length=len(feedTable),
+                                    dtype=numpy.float64,
+                                    shape=calTable['DATA'].shape[1]))
+
+        return feedTable
+
+    def findCalFactors(self):
+        raise NotImplementedError("findCalFactors() must be implemented for "
+                                  "all Calibrator subclasses!")
 
     def attenuate(self, calTable):
         for factor in self.table.getUnique('FACTOR'):
@@ -92,19 +109,9 @@ class Calibrator(object):
                 (calTable['POLARIZE'] == pol)
             )
             power = self.attenuator.attenuate(dataToAttenuate)
-            print(power)
             calTable['DATA'][mask] = power
 
         return calTable
-
-    def initFeedTable(self, calTable):
-        feedTable = Table([numpy.unique(calTable['FEED'])])
-        feedTable.add_column(Column(name='DATA',
-                                    length=len(feedTable),
-                                    dtype=numpy.float64,
-                                    shape=calTable['DATA'].shape[1]))
-
-        return feedTable
 
     def interPolCalibrate(self, feedTable, calTable):
         for row in feedTable:
@@ -115,16 +122,9 @@ class Calibrator(object):
     def interBeamCalibrate(self, sigFeedData, refFeedData):
         return self.interBeamCalibrator.calibrate(sigFeedData, refFeedData)
 
-    def getCalOffData(self, calTable):
-        calTable['DATA'] = self.table.query(CAL=0)['DATA']
-
-    def getSigFeedData(self, feedTable, calTable):
-        sigFeed = self.table.meta['TRCKBEAM']
-        feedTable['DATA'] = calTable[calTable['FEED'] == sigFeed]['DATA']
-
     def calibrate(self):
         calTable = self.initCalTable()
-        import ipdb; ipdb.set_trace()
+        logger.debug("Initialized calTable:\n%s", calTable)
         if self.attenuator:
             # If we have an attenuator, then use it. This will
             # attenuate the data and populate the calData DATA column
@@ -133,36 +133,191 @@ class Calibrator(object):
         else:
             # If not, we just remove all of our rows that have data
             # taking while the cal diode was on
-            logger.info("Removing CAL on data...")
-            self.getCalOffData(calTable)
+            logger.info("Removing 'cal on' data...")
+            calTable['DATA'] = self.table.query(CAL=0)['DATA']
+
+        logger.debug("After cal data processing:\n%s", calTable)
+
         # So, we now have a calData table with a populated DATA column,
         # ready for the next stage
 
-        import ipdb; ipdb.set_trace()
         feedTable = self.initFeedTable(calTable)
+        logger.debug("Initialized feed table:\n%s", feedTable)
         if self.interPolCalibrator:
             # If we have an inter-pol calibrator, then use it. This will
             # calibrate the data between the two polarizations in the
             # calTable and store the results by feed in feedTable
+            logger.debug("Performing inter-polarization calibration "
+                         "using calibrator %s",
+                         self.interPolCalibrator.__class__.__name__)
             self.interPolCalibrate(feedTable, calTable)
-        else:
-            # If we do not have an inter-pol calibrator, then the user
-            # must have specified a polarization to select. We will do
-            # that now...
-            self.getSigFeedData(feedTable, calTable)
 
-        import ipdb; ipdb.set_trace()
+        # NOTE: If we don't have an interPolCalibrator, we just do
+        # nothing -- we expect that the proper filtering has already
+        # been done upstream
+        # TODO: Prove that this is true!
+        else:
+            # logger.debug("Copying calTable")
+            feedTable['DATA'] = calTable['DATA']
+
+            # self.getSigFeedData(feedTable, calTable)
+
+        logger.debug("Feed table is now:\n%s", feedTable)
+
+        # import ipdb; ipdb.set_trace()
         sigFeed = self.table.meta['TRCKBEAM']
         if self.interBeamCalibrator:
-            import ipdb; ipdb.set_trace()
+            logger.debug("Performing inter-beam calibration using "
+                         "calibrator %s",
+                         self.interBeamCalibrator.__class__.__name__)
 
             refFeed = self.table[self.table['FEED'] != sigFeed]['FEED'][0]
-            data = self.interBeamCalibrate(feedTable[sigFeed],
-                                           feedTable[refFeed])
+            data = self.interBeamCalibrate(feedTable.query(FEED=sigFeed)['DATA'],
+                                           feedTable.query(FEED=refFeed)['DATA'])
+            # import ipdb; ipdb.set_trace()
         else:
+            # TODO: I suspect that this is a no-op...
+            # TODO: But it seems essential...
+            logger.debug("Removing non-signal-feed data")
             data = feedTable[feedTable['FEED'] == sigFeed]['DATA']
-        import ipdb; ipdb.set_trace()
+            # data = feedTable['DATA'][0]
+        logger.debug("Feed table is now:\n%s", feedTable)
+        logger.debug("Final calibrated data:\n%s", data)
         return data
+
+class TraditionalCalibrator(Calibrator):
+    def findCalFactors(self):
+        table = self.table
+        receiver = table.meta['RECEIVER']
+
+        fitsForScan = getFitsForScan(self.projPath, self.scanNum)
+        rcvrCalHduList = fitsForScan[receiver]
+        rcvrCalTable = getRcvrCalTable(rcvrCalHduList)
+
+        # TODO: Double check this assumption
+        uniqueRows = numpy.unique(table['FEED', 'POLARIZE',
+                                       'CENTER_SKY', 'BANDWDTH',
+                                       'HIGH_CAL'])
+        for feed, pol, centerSkyFreq, bandwidth, highCal in uniqueRows:
+            mask = (
+                (table['FEED'] == feed) &
+                (table['POLARIZE'] == pol) &
+                (table['CENTER_SKY'] == centerSkyFreq) &
+                (table['BANDWDTH'] == bandwidth) &
+                (table['HIGH_CAL'] == highCal)
+            )
+
+            maskedTable = table[mask]
+
+            if len(numpy.unique(maskedTable['RECEPTOR'])) != 1:
+                raise ValueError("The rows in the receiver calibration file "
+                                 "must all be unique for all "
+                                 "feed/polarization/frequency groupings.")
+
+            receptor = maskedTable['RECEPTOR'][0]
+
+            tCal = getTcal(rcvrCalTable, feed, receptor, pol,
+                           highCal, centerSkyFreq, bandwidth)
+            table['FACTOR'][mask] = tCal
+
+class CalSeqCalibrator(Calibrator):
+    # def __init__(self, *args, **kwargs):
+    #     super(CalSeqCalibrator, self).__init__(*args, **kwargs)
+    #     self.attenuator = None
+
+
+    def findCalFactors(self):
+        table = self.table
+        # This is defined in the subclasses
+        gains = self.getGains()
+        if gains is None:
+            # We didn't find the gains, so we want to keep FACTOR values 1.0
+            wprint("Could not find gain values. Setting all gains to 1.0")
+            return
+
+        # table['FACTOR']
+        # import ipdb; ipdb.set_trace()
+        for row in table:
+            index = str(row['FEED']) + row['POLARIZE']
+            # print(index)
+            row['FACTOR'] = gains[index]
+
+    def getGains(self):
+        raise NotImplementedError("getGains must be implemented by all "
+                                  "CalSeqCalibrator subclasses")
+
+    def _getScanProcedures(self):
+        """Return a list of each scan number and its procname"""
+        # projName = projPath.split('/')[-1]
+        path = "/".join(self.projPath.split('/')[:-1])
+
+        scanLog = fits.getdata(os.path.join(self.projPath, "ScanLog.fits"))
+        scans = []
+        for row in scanLog:
+            _, scan, filepath = row
+            if 'GO' in filepath:
+                goFile = os.path.join(path, filepath)
+                try:
+                    goHdu = fits.open(goFile)
+                    h = goHdu[0].header
+                    scans.append(
+                        (scan, h['PROCNAME'], os.path.split(filepath)[1]))
+                except Exception:
+                    pass
+        return scans
+
+    def _findMostRecentProcScans(self, procname, count=1):
+        """
+        Find the most recent scan(s) that have the given procname.
+        This returns an ordered list of the most recent scan(s),
+        or 0s if the proper amount of scans can't be found.
+        """
+        scans = self._getScanProcedures()
+
+        procScanNums = [0] * count
+
+        calSeqScans = [(scan, file) for (scan, proc, file) in scans
+                       if scan <= self.scanNum and proc == procname]
+
+        if len(calSeqScans) == 0:
+            return []
+
+        for i in range(min(len(calSeqScans), count)):
+            procScanNums[-i - 1] = calSeqScans[-i - 1]
+
+        return procScanNums
+
+class WBandCalibrator(CalSeqCalibrator):
+    def getGains(self):
+        """
+        For this scan, calculate the gains from previous calseq scan.
+        This has format {"1X": 0.0, "2X": 0.0, "1Y": 0.0, "2Y": 0.0}
+        """
+        calSeqScanNumInfo = self._findMostRecentProcScans("CALSEQ")
+
+        if len(calSeqScanNumInfo) > 0:
+            calSeqScanNum = calSeqScanNumInfo[0][0]
+            cal = WBandCalibration()
+            cal.makeCalScan(self.projPath, calSeqScanNum)
+            return cal.calData[1]  # gains are in this spot
+        return None
+
+
+class ArgusCalibrator(CalSeqCalibrator):
+    def getGains(self):
+        """
+        For this scan, calculate the gains from most recent VaneCal
+        scan pair.
+        This has format {"10X": 0.0, "11X": 0.0, "10Y": 0.0, "11Y": 0.0}
+        """
+        calSeqNums = self._findMostRecentProcScans("VANECAL", count=2)
+
+        if all(calSeqNums):
+            cal = ArgusCalibration(
+                self.projPath, calSeqNums[0][1], calSeqNums[1][1]
+            )
+            return cal.getGain()
+        return None
 
 
 ### Examples
