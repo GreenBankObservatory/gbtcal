@@ -10,6 +10,12 @@ def installPythonPackages() {
     pip install -r requirements.txt"""
 }
 
+def testPython() {
+    sh """source ./${venv_name}/bin/activate
+    cd tests
+    nosetests --nocapture test_calibrator.py"""
+}
+
 node {
     stage('cleanup') {
         deleteDir()
@@ -27,4 +33,13 @@ node {
             throw(error)
         }
     }
+
+    stage('test') {
+        try {
+            testPython()
+        } catch(error) {
+            notify(failure, 'An error has occurred during the <b>test</b> stage.')
+            throw(error)
+        }
+    }    
 }    
