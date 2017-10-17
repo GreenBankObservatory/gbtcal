@@ -34,7 +34,7 @@ Rcvr4_6 C 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterP
 Rcvr8_10 X 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage ""
 Rcvr12_18 Ku 2 2 TraditionalCalibrator 2 True False Avg "" CalDiodeAttenuate InterPolAverage BeamSubtractionDBA
 RcvrArray18_26 KFPA 7 2 TraditionalCalibrator 2 True False Avg "" CalDiodeAttenuate InterPolAverage BeamSubtractionDBA
-Rcvr26_40 Ka 2 1 KaCalibrator 2 True True Avg "" CalDiodeAttenuate InterPolAverage BeamSwitchedTBOnly
+Rcvr26_40 Ka 2 1 TraditionalCalibrator 2 True True Avg "" CalDiodeAttenuate InterPolAverage BeamSwitchedTBOnly
 Rcvr40_52 Q 2 2 TraditionalCalibrator 2 True True Avg "" CalDiodeAttenuate InterPolAverage OofDBA
 Rcvr68_92 W 2 2 WBandCalibrator 2 True True Avg "" CalSeqAttenuate InterPolAverage BeamSubtractionDBA
 RcvrArray75_115 Argus 16 1 ArgusCalibrator 2 True True Avg "" CalSeqAttenuate InterPolAverage BeamSubtractionDBA
