@@ -51,7 +51,7 @@ class TestCalibrate(unittest.TestCase):
             print("CALOPT:", calOption)
             # if calOption != ('Raw', 'XL'):
             #     continue
-            actual = doCalibrate(self.receiverTable, table, *calOption)
+            actual = doCalibrate(self.receiverTable, table, *calOption, attenType='OOF')
             expected = numpy.array(result)
             # TODO: ROUNDING??? WAT
             if (calOption[0] == CALOPTS.RAW and

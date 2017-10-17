@@ -98,21 +98,27 @@ class Calibrator(object):
         raise NotImplementedError("findCalFactors() must be implemented for "
                                   "all Calibrator subclasses!")
 
+    # def attenuate(self, calTable):
+    #     # Populate FACTORS column with calibration factors (in place)
+    #     self.findCalFactors()
+
+    #     for factor in self.table.getUnique('FACTOR'):
+    #         dataToAttenuate = self.table.query(FACTOR=factor)
+    #         feed = dataToAttenuate['FEED'][0]
+    #         pol = dataToAttenuate['POLARIZE'][0]
+    #         mask = (
+    #             (calTable['FEED'] == feed) &
+    #             (calTable['POLARIZE'] == pol)
+    #         )
+    #         power = self.attenuator.attenuate(dataToAttenuate)
+    #         calTable['DATA'][mask] = power
+
+    #     return calTable
+
     def attenuate(self, calTable):
         self.findCalFactors()
 
-        for factor in self.table.getUnique('FACTOR'):
-            dataToAttenuate = self.table.query(FACTOR=factor)
-            feed = dataToAttenuate['FEED'][0]
-            pol = dataToAttenuate['POLARIZE'][0]
-            mask = (
-                (calTable['FEED'] == feed) &
-                (calTable['POLARIZE'] == pol)
-            )
-            power = self.attenuator.attenuate(dataToAttenuate)
-            calTable['DATA'][mask] = power
-
-        return calTable
+        self.attenuator.attenuate(self.table, calTable)
 
     def interPolCalibrate(self, feedTable, calTable):
         for row in feedTable:
@@ -135,7 +141,6 @@ class Calibrator(object):
             # If not, we just remove all of our rows that have data
             # taking while the cal diode was on
             logger.info("Removing 'cal on' data...")
-            import ipdb; ipdb.set_trace()
             calTable['DATA'] = self.table.query(CAL=0)['DATA']
 
         logger.debug("After cal data processing:\n%s", calTable)
