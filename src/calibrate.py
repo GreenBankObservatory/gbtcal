@@ -4,7 +4,7 @@ import numpy
 
 import newcalibrator
 from rcvr_table import ReceiverTable
-from constants import CALOPTS, POLOPTS
+from constants import CALOPTS, POLOPTS, ATTENTYPES
 from dcr_decode import decode
 import attenuate
 import newcalibrate
@@ -25,7 +25,7 @@ def initLogging():
 logger = initLogging()
 
 
-def doCalibrate(receiverTable, dataTable, calMode, polMode):
+def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
     receiver = dataTable.meta['RECEIVER']
     receiverRow = receiverTable.getReceiverInfo(receiver)
 
@@ -53,8 +53,18 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode):
     if calMode != CALOPTS.RAW:
         # If the user has requested that we do any mode other than raw
         # it is assumed that we do attenuation
-        attenuatorName = receiverRow['Attenuator'][0]
+
+        if attenType == ATTENTYPES.OOF:
+            attenuatorName = receiverRow['OofAttenuator'][0]
+        else:
+            attenuatorName = receiverRow['Attenuator'][0]
+
+        if not attenuatorName:
+            raise ValueError("Attenuator of type {} has not been defined for "
+                             "receiver {}".format(attenType, receiver))
+
         attenuator = getattr(attenuate, attenuatorName)()
+
 
     if polMode == POLOPTS.AVG:
         # If the user has requested that we do polarization averaging,
