@@ -50,7 +50,6 @@ class Calibrator(object):
                    data=numpy.ones(len(self.table))
             )
         )
-        self.findCalFactors()
 
         self.describe()
 
@@ -100,6 +99,8 @@ class Calibrator(object):
                                   "all Calibrator subclasses!")
 
     def attenuate(self, calTable):
+        self.findCalFactors()
+
         for factor in self.table.getUnique('FACTOR'):
             dataToAttenuate = self.table.query(FACTOR=factor)
             feed = dataToAttenuate['FEED'][0]
@@ -134,6 +135,7 @@ class Calibrator(object):
             # If not, we just remove all of our rows that have data
             # taking while the cal diode was on
             logger.info("Removing 'cal on' data...")
+            import ipdb; ipdb.set_trace()
             calTable['DATA'] = self.table.query(CAL=0)['DATA']
 
         logger.debug("After cal data processing:\n%s", calTable)
