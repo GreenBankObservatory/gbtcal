@@ -129,6 +129,23 @@ class Calibrator(object):
     def interBeamCalibrate(self, sigFeedData, refFeedData):
         return self.interBeamCalibrator.calibrate(sigFeedData, refFeedData)
 
+    def getRawData(self, calTable):
+        sigFeed = self.table.meta['TRCKBEAM']
+
+        sigFeedTable = self.table.query(FEED=sigFeed)
+
+        calOffTable = sigFeedTable.query(CAL=0)
+        # import ipdb; ipdb.set_trace()
+        if len(sigFeedTable.getUnique('SIGREF')) == 1:
+            theData = calOffTable['DATA']
+        else:
+            sigData = calOffTable.query(SIGREF=0)['DATA']
+            refData = calOffTable.query(SIGREF=1)['DATA']
+            theData = sigData - refData
+
+        sigFeedMask = calTable['FEED'] == sigFeed
+        calTable['DATA'][sigFeedMask] = theData
+
     def calibrate(self):
         calTable = self.initCalTable()
         logger.debug("Initialized calTable:\n%s", calTable)
@@ -141,7 +158,9 @@ class Calibrator(object):
             # If not, we just remove all of our rows that have data
             # taking while the cal diode was on
             logger.info("Removing 'cal on' data...")
-            calTable['DATA'] = self.table.query(CAL=0)['DATA']
+            self.getRawData(calTable)
+            # import ipdb; ipdb.set_trace()
+
         logger.debug("After cal data processing:\n%s", calTable)
 
         # So, we now have a calData table with a populated DATA column,
@@ -177,7 +196,7 @@ class Calibrator(object):
                          "calibrator %s",
                          self.interBeamCalibrator.__class__.__name__)
 
-            refFeed = self.table[self.table['FEED'] != sigFeed]['FEED'][0]
+            # refFeed = self.table[self.table['FEED'] != sigFeed]['FEED'][0]
             data = self.interBeamCalibrate(self.table, feedTable)
             # data = self.interBeamCalibrate(feedTable.query(FEED=sigFeed)['DATA'],
             #                                feedTable.query(FEED=refFeed)['DATA'])

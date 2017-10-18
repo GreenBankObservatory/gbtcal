@@ -50,7 +50,7 @@ class TestCalibrate(unittest.TestCase):
         print("expectedResults keys:", expectedResults.keys())
         for calOption, result in expectedResults.items():
             print("CALOPT:", calOption)
-            # if calOption != ('DualBeam', 'Avg'):
+            # if calOption != ('Raw', 'XL'):
             #     continue
             actual = doCalibrate(self.receiverTable, table, *calOption, attenType='GFM')
             expected = numpy.array(result)
