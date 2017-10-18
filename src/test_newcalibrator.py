@@ -47,10 +47,11 @@ class TestCalibrate(unittest.TestCase):
         for option in optionsToIgnore:
             if option in expectedResults:
                 del expectedResults[option]
+        print("expectedResults keys:", expectedResults.keys())
         for calOption, result in expectedResults.items():
             print("CALOPT:", calOption)
-            # if calOption != ('Raw', 'XL'):
-            #     continue
+            if calOption != ('DualBeam', 'XL'):
+                continue
             actual = doCalibrate(self.receiverTable, table, *calOption, attenType='OOF')
             expected = numpy.array(result)
             # TODO: ROUNDING??? WAT
@@ -84,9 +85,9 @@ class TestCalibrate(unittest.TestCase):
         # TODO: Figure out why we are excluding DualBeam from here.
         self._testCalibrate(
             "AGBT16A_473_01:1:Rcvr40_52",
-            optionsToIgnore=[
-                ('DualBeam', 'XL'), ('DualBeam', 'YR'), ('DualBeam', 'Avg')
-            ]
+            # optionsToIgnore=[
+            #     ('DualBeam', 'XL'), ('DualBeam', 'YR'), ('DualBeam', 'Avg')
+            # ]
         )
 
     def testRcvr68_92(self):
@@ -115,3 +116,17 @@ class TestCalibrate(unittest.TestCase):
                 ('Raw', 'Avg')
             ]
         )
+
+    def testRcvr40_52OOF(self):
+
+        testDataProjName = "TPTCSOOF_091031"
+        projPath = "../test/data/{}".format(testDataProjName)
+        scanNum = 45
+        dataTable = decode(projPath, scanNum)
+
+        actual = doCalibrate(self.receiverTable, dataTable,
+                             calMode='DualBeam', polMode='XL', attenType='OOF')
+
+        # call it's oof calibration
+        self.assertAlmostEqual(-2.43800002314, actual[0], 6)
+        self.assertAlmostEqual(-2.25389923142, actual[-1], 6)

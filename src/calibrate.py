@@ -81,7 +81,8 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
     if calMode in [CALOPTS.DUALBEAM, CALOPTS.BEAMSWITCHEDTBONLY]:
         # If the user has selected a mode that operates on two beams,
         # enable our interBeamCal
-        interBeamCalName = receiverRow['InterBeamCal'][0]
+        # interBeamCalName = receiverRow['InterBeamCal'][0]
+        interBeamCalName = 'OofCalibrate'
         interBeamCal = getattr(newcalibrate, interBeamCalName)()
     # else:
         # Otherwise we set feed to the track beam. This is the signal
