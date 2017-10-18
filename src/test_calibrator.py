@@ -138,11 +138,10 @@ class TestAgainstSparrowResults(unittest.TestCase):
         scanNum = 45
         dataTable = decode(projPath, scanNum)
 
-        # make TraditionalCalibrator object
-        cal = TraditionalCalibrator(dataTable)
+        actual = doCalibrate(self.receiverTable, dataTable, *calOption,
+                             attenType='OOF')
 
         # call it's oof calibration
-        data = cal.calibrateOOF('L')
 
-        self.assertAlmostEqual(-2.43800002314, data[0][0], 6)
-        self.assertAlmostEqual(-2.25389923142, data[0][-1], 6)
+        self.assertAlmostEqual(-2.43800002314, actual[0][0], 6)
+        self.assertAlmostEqual(-2.25389923142, actual[0][-1], 6)

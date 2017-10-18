@@ -48,81 +48,20 @@ class InterBeamCalibrate(InterStreamCalibrate):
         attenRefData = self.attenuate(table, pol, feed=refFeed)
         return attenSigData, attenRefData
 
-class OofCalibrate(Calibrate):
-    def calibrate(self, table, pol):
+class OofCalibrate(InterBeamCalibrate):
+    def calibrate(self, table, calTable):
         sigFeed, refFeed  = self.getSigRefFeeds(table)
+        sigFeedTcal = table.query(FEED=sigFeed)['FACTOR'][0]
+        refFeedTcal = table.query(FEED=refFeed)['FACTOR'][0]
 
-        freq = self.getFreq(table, sigFeed, pol)
+        tcalQuot = refFeedTcal / sigFeedTcal
 
-        sigref = 0
-        cal = 1
-        mask = (
-            (table['FEED'] == sigFeed) &
-            (table['SIGREF'] == sigref) &
-            (table['CAL'] == cal) &
-            (table['CENTER_SKY'] == freq) &
-            (table['POLARIZE'] == pol)
-        )
+        sigFeedCalib = calTable.query(FEED=sigFeed)['DATA'][0]
+        refFeedCalib = calTable.query(FEED=refFeed)['DATA'][0]
 
-        onData = table[mask]['DATA']
-
-        cal = 0
-        mask = (
-            (table['FEED'] == sigFeed) &
-            (table['SIGREF'] == sigref) &
-            (table['CAL'] == cal) &
-            (table['CENTER_SKY'] == freq) &
-            (table['POLARIZE'] == pol)
-        )
-
-        offData = table[mask]['DATA']
-        feed1tcal = table[mask]['FACTOR'][0]
-
-
-        # calculate something w/ that
-        count = (onData - offData).mean()
-        feed1calib = 0.5 *  (onData + offData) / count
-
-        # get tcal for both beams
-        # get on & off for ref beam
-        # feeds = table.getUnique('FEED')
-        # refFeed = [f for f in feeds if f != sigFeed][0]
-        freq = self.getFreq(table, refFeed, pol)
-        # rawPower = self.getRawPower(table, sigFeed, pol, freq)
-
-        sigref = 0
-        cal = 1
-        mask = (
-            (table['FEED'] == refFeed) &
-            (table['SIGREF'] == sigref) &
-            (table['CAL'] == cal) &
-            (table['CENTER_SKY'] == freq) &
-            (table['POLARIZE'] == pol)
-        )
-
-        onData = table[mask]['DATA']
-
-        cal = 0
-        mask = (
-            (table['FEED'] == refFeed) &
-            (table['SIGREF'] == sigref) &
-            (table['CAL'] == cal) &
-            (table['CENTER_SKY'] == freq) &
-            (table['POLARIZE'] == pol)
-        )
-
-        offData = table[mask]['DATA']
-        feed2tcal = table[mask]['FACTOR'][0]
-
-        # calculate something w/ that
-        count = (onData - offData).mean()
-        tcalQuot = feed2tcal / feed1tcal
-        feed2calib = (0.5 *  (onData + offData) / count) * tcalQuot
-
-        # find difference
-        # return feed1calib - feed2calib
         # OOF gets this backwards, so so will us
-        return feed2calib - feed1calib
+        # TODO: We are not really sure why this arrangement works, but it does
+        return (refFeedCalib * tcalQuot) - sigFeedCalib
 
 
 class BeamSubtractionDBA(InterBeamCalibrate):
