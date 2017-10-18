@@ -178,7 +178,7 @@ class Calibrator(object):
                          self.interBeamCalibrator.__class__.__name__)
 
             refFeed = self.table[self.table['FEED'] != sigFeed]['FEED'][0]
-            data = self.interBeamCalibrate(self.table, calTable)
+            data = self.interBeamCalibrate(self.table, feedTable)
             # data = self.interBeamCalibrate(feedTable.query(FEED=sigFeed)['DATA'],
             #                                feedTable.query(FEED=refFeed)['DATA'])
             # import ipdb; ipdb.set_trace()
