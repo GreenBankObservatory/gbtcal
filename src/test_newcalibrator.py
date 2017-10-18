@@ -50,9 +50,9 @@ class TestCalibrate(unittest.TestCase):
         print("expectedResults keys:", expectedResults.keys())
         for calOption, result in expectedResults.items():
             print("CALOPT:", calOption)
-            if calOption != ('DualBeam', 'XL'):
-                continue
-            actual = doCalibrate(self.receiverTable, table, *calOption, attenType='OOF')
+            # if calOption != ('DualBeam', 'Avg'):
+            #     continue
+            actual = doCalibrate(self.receiverTable, table, *calOption, attenType='GFM')
             expected = numpy.array(result)
             # TODO: ROUNDING??? WAT
             if (calOption[0] == CALOPTS.RAW and

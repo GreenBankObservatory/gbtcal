@@ -1,7 +1,7 @@
 import numpy
 
 class Calibrate(object):
-    def calibrate():
+    def calibrate(self, rawTable, feedTable):
         pass
     # def __init__(self, attenuator):
     #     self.attenuator = attenuator
@@ -14,7 +14,7 @@ class Calibrate(object):
     #     self.attenuator.attenuate(table, pol, feed)
 
 class InterStreamCalibrate(Calibrate):
-    def calibrate():
+    def calibrate(self, rawTable, feedTable):
         pass
 
 # class IntraStreamCalibrate(Calibrate):
@@ -30,8 +30,8 @@ class InterBeamCalibrate(InterStreamCalibrate):
             raise ValueError("Must have at least two feeds to determine "
                              "the tracking/reference feeds")
         if len(feeds) > 2:
-            wprint("More than two feeds provided; selecting second feed as "
-                   "reference feed!")
+            print("More than two feeds provided; selecting second feed as "
+                  "reference feed!")
 
         if trackBeam == feeds[0]:
             sig = feeds[0]
@@ -49,24 +49,28 @@ class InterBeamCalibrate(InterStreamCalibrate):
         return attenSigData, attenRefData
 
 class OofCalibrate(InterBeamCalibrate):
-    def calibrate(self, table, calTable):
-        sigFeed, refFeed  = self.getSigRefFeeds(table)
-        sigFeedTcal = table.query(FEED=sigFeed)['FACTOR'][0]
-        refFeedTcal = table.query(FEED=refFeed)['FACTOR'][0]
+    def calibrate(self, rawTable, feedTable):
+        sigFeed, refFeed  = self.getSigRefFeeds(rawTable)
+        sigFeedTcal = rawTable.query(FEED=sigFeed)['FACTOR'][0]
+        refFeedTcal = rawTable.query(FEED=refFeed)['FACTOR'][0]
 
         tcalQuot = refFeedTcal / sigFeedTcal
 
-        sigFeedCalib = calTable.query(FEED=sigFeed)['DATA'][0]
-        refFeedCalib = calTable.query(FEED=refFeed)['DATA'][0]
+        sigFeedCalData = feedTable.query(FEED=sigFeed)['DATA'][0]
+        refFeedCalData = feedTable.query(FEED=refFeed)['DATA'][0]
 
         # OOF gets this backwards, so so will us
         # TODO: We are not really sure why this arrangement works, but it does
-        return (refFeedCalib * tcalQuot) - sigFeedCalib
+        return (refFeedCalData * tcalQuot) - sigFeedCalData
 
 
 class BeamSubtractionDBA(InterBeamCalibrate):
-    def calibrate(self, sigFeedCalData, refFeedCalData):
+    def calibrate(self, rawTable, feedTable):
         """Here we're just finding the difference between the two beams"""
+
+        sigFeed, refFeed  = self.getSigRefFeeds(rawTable)
+        sigFeedCalData = feedTable.query(FEED=sigFeed)['DATA'][0]
+        refFeedCalData = feedTable.query(FEED=refFeed)['DATA'][0]
         return sigFeedCalData - refFeedCalData
 
 
