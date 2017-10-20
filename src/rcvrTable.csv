@@ -14,7 +14,7 @@
 # - {name: 'Attenuator', datatype: string}
 # - {name: 'InterPolCal', datatype: string}
 # - {name: 'InterBeamCal', datatype: string}
-# - {name: 'OofAttenuator', datatype: string}
+# - {name: 'OofCalibrator', datatype: string}
 # meta: !!omap
 # - polarizationAbbreviations: {both: Avg, pol1: XL, pol2: YR}
 # - calibrationAbbreviations: {db: DualBeam, r: Raw, tp: TotalPower, bs: BeamSwitchedTBOnly}
@@ -26,16 +26,16 @@
 #     2: !!python/tuple [pol1, pol2, both]
 # - calibratorAbbreviations: {cs: Cal Seq, ns: Noise Source}
 # schema: astropy-2.0
-"M&C Name" Abbrev. "# Beams" "# Pols" "Cal Strategy" "# Usable Beams" "OOF Support" "OOF Required" "Default Pol Option" "Default Cal Option" "Attenuator" "InterPolCal" "InterBeamCal" "OofAttenuator"
-RcvrPF_1 PF_1 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" CalDiodeAttenuate
-RcvrPF_2 PF_2 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" CalDiodeAttenuate
-Rcvr1_2 L 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" CalDiodeAttenuate
-Rcvr2_3 S 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" CalDiodeAttenuate
-Rcvr4_6 C 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" CalDiodeAttenuate
-Rcvr8_10 X 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" CalDiodeAttenuate
-Rcvr12_18 Ku 2 2 TraditionalCalibrator 2 True False Avg "" CalDiodeAttenuate InterPolAverage BeamSubtractionDBA CalDiodeAttenuate
-RcvrArray18_26 KFPA 7 2 TraditionalCalibrator 2 True False Avg "" CalDiodeAttenuate InterPolAverage BeamSubtractionDBA CalDiodeAttenuate
-Rcvr26_40 Ka 2 1 TraditionalCalibrator 2 True True Avg "" CalDiodeAttenuate InterPolAverage BeamSwitchedTBOnly CalDiodeAttenuate
-Rcvr40_52 Q 2 2 TraditionalCalibrator 2 True True Avg "" CalDiodeAttenuate InterPolAverage BeamSubtractionDBA OofCalDiodeAttenuate
-Rcvr68_92 W 2 2 WBandCalibrator 2 True True Avg "" CalSeqAttenuate InterPolAverage BeamSubtractionDBA CalSeqAttenuate
-RcvrArray75_115 Argus 16 1 ArgusCalibrator 2 True True Avg "" CalSeqAttenuate InterPolAverage BeamSubtractionDBA CalSeqAttenuate
+"M&C Name" Abbrev. "# Beams" "# Pols" "Cal Strategy" "# Usable Beams" "OOF Support" "OOF Required" "Default Pol Option" "Default Cal Option" "Attenuator" "InterPolCal" "InterBeamCal" "OofCalibrator"
+RcvrPF_1 PF_1 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" TraditionalCalibrator
+RcvrPF_2 PF_2 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" TraditionalCalibrator
+Rcvr1_2 L 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" TraditionalCalibrator
+Rcvr2_3 S 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" TraditionalCalibrator
+Rcvr4_6 C 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" TraditionalCalibrator
+Rcvr8_10 X 1 2 TraditionalCalibrator 1 True False Avg "" CalDiodeAttenuate InterPolAverage "" TraditionalCalibrator
+Rcvr12_18 Ku 2 2 TraditionalCalibrator 2 True False Avg "" CalDiodeAttenuate InterPolAverage BeamSubtractionDBA TraditionalCalibrator
+RcvrArray18_26 KFPA 7 2 TraditionalCalibrator 2 True False Avg "" CalDiodeAttenuate InterPolAverage BeamSubtractionDBA TraditionalCalibrator
+Rcvr26_40 Ka 2 1 KaCalibrator 2 True True Avg "" CalDiodeAttenuate InterPolAverage BeamSubtractionDBA KaCalibrator
+Rcvr40_52 Q 2 2 TraditionalCalibrator 2 True True Avg "" CalDiodeAttenuate InterPolAverage BeamSubtractionDBA TraditionalOofCalibrator
+Rcvr68_92 W 2 2 WBandCalibrator 2 True True Avg "" CalSeqAttenuate InterPolAverage BeamSubtractionDBA WBandCalibrator
+RcvrArray75_115 Argus 16 1 ArgusCalibrator 2 True True Avg "" CalSeqAttenuate InterPolAverage BeamSubtractionDBA ArgusCalibrator

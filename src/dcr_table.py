@@ -59,6 +59,27 @@ class DcrTable(StrippedTable):
         )
         return self[phaseMask]
 
+    def getSigAndRefFeeds(self):
+        feeds = self.getUnique('FEED')
+        trackBeam = self.getTrackBeam()
+
+        if len(feeds) < 2:
+            raise ValueError("Must have at least two feeds to determine "
+                             "the tracking/reference feeds")
+        if len(feeds) > 2:
+            # TODO: logger
+            print("More than two feeds provided; selecting second feed as "
+                  "reference feed!")
+
+        if trackBeam == feeds[0]:
+            sig = feeds[0]
+            ref = feeds[1]
+        else:
+            sig = feeds[1]
+            ref = feeds[0]
+
+        return sig, ref
+
     @staticmethod
     def getTableByName(hduList, tableName):
         # TODO: Does not work if there are multiple tables of the same name
@@ -245,7 +266,7 @@ class DcrTable(StrippedTable):
         if len(data) != 1:
             import ipdb; ipdb.set_trace()
             raise ValueError("Cannot unambiguously retrieve CAL state; "
-                             "got more than one row!")
+                             "expected 1 row but got {}!".format(len(data)))
 
         return data[0]
 
@@ -263,3 +284,6 @@ class DcrTable(StrippedTable):
             raise ValueError("Cannot unambiguously determine FACTOR; "
                              "there are multiple values present!")
         return self['FACTOR'][0]
+
+    def getTrackFeedData(self):
+        return self.query(FEED=self.getTrackBeam())
