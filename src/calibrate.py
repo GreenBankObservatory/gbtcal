@@ -37,6 +37,7 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
         # we may get 'XL', but we need to pass either 'X' or 'L'
         polarizations = numpy.unique(dataTable['POLARIZE'])
         polset = set(polarizations)
+        # TODO: Dumb
         if polset.issuperset(["X"]) or polset.issuperset(["Y"]):
             polOption = polMode[0]
         elif polset.issuperset(["L"]) or polset.issuperset(["R"]):
@@ -54,36 +55,43 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
         # If the user has requested that we do any mode other than raw
         # it is assumed that we do attenuation
 
-        if attenType == ATTENTYPES.OOF:
-            attenuatorName = receiverRow['OofAttenuator'][0]
-        else:
-            attenuatorName = receiverRow['Attenuator'][0]
+        # if attenType == ATTENTYPES.OOF:
+        #     attenuatorName = receiverRow['OofAttenuator'][0]
+        # else:
+        attenuatorName = receiverRow['Attenuator'][0]
 
         if not attenuatorName:
             raise ValueError("Attenuator of type {} has not been defined for "
                              "receiver {}".format(attenType, receiver))
 
-        attenuator = getattr(attenuate, attenuatorName)()
+        attenuator = attenuate.get(attenuatorName)()
 
 
     if polMode == POLOPTS.AVG:
         # If the user has requested that we do polarization averaging,
         # we need to enable our interPolCal
         interPolCalName = receiverRow['InterPolCal'][0]
-        interPolCal = getattr(newcalibrate, interPolCalName)()
+        interPolCal = newcalibrate.get(interPolCalName)()
     else:
         # Otherwise we set polarize to the parsed polMode, polOption.
         # So, it will be one of X, Y, R, or L. Since we are not
         # averaging pols, we will instead be simply selecting a
         # polarization -- this is the one to select
-        queryParams['POLARIZE'] = polOption
+        polsInTrackFeed = dataTable.getTrackFeedData().getUnique('POLARIZE')
+        # if polOption in polsInTrackFeed:
+        #     queryParams['POLARIZE'] = polOption
+        # else:
+        #     logger.warning("Polarization %s does not exist within track feed "
+        #                    "(which contains %s), so no filtering on "
+        #                    "polarization will be performed",
+        #                    polOption, list(polsInTrackFeed))
 
     if calMode in [CALOPTS.DUALBEAM, CALOPTS.BEAMSWITCHEDTBONLY]:
         # If the user has selected a mode that operates on two beams,
         # enable our interBeamCal
         interBeamCalName = receiverRow['InterBeamCal'][0]
         # interBeamCalName = 'OofCalibrate'
-        interBeamCal = getattr(newcalibrate, interBeamCalName)()
+        interBeamCal = newcalibrate.get(interBeamCalName)()
     # else:
         # Otherwise we set feed to the track beam. This is the signal
         # beam, and it is what we care about when doing total power, etc.
@@ -93,14 +101,21 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
     # Filter the table based on the above query parameters. If none
     # are given, we'll just keep the whole table
     filteredTable = dataTable.query(**queryParams)
-
+    allFeeds = dataTable.getUnique('FEED')
+    filteredTable.meta['ALLFEEDS'] = allFeeds
     logger.debug("Raw IF/DCR data table:\n%s", dataTable)
     logger.debug("Filtering based on parameters: %s", queryParams)
     logger.debug("Filtered IF/DCR data table:\n%s", filteredTable)
 
+    # Get calibrator first
+    # Then use map to determine what data needs to be preserved
+    # then instantiate calibrator with filtered table
 
     try:
-        calibratorStr = receiverRow['Cal Strategy'][0]
+        if attenType == ATTENTYPES.OOF:
+            calibratorStr = receiverRow['OofCalibrator'][0]
+        else:
+            calibratorStr = receiverRow['Cal Strategy'][0]
     except IndexError:
         raise ValueError("Receiver '{}' does not exist in the receiver table!"
                          .format(receiver))
@@ -118,12 +133,15 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
                  calibratorClass.__class__.__name__)
 
 
-    return calibratorClass(
+    # polarization = polOption if polOption != POLOPTS.AVG else None
+    calibrator = calibratorClass(
         filteredTable,
         attenuator,
         interPolCal,
         interBeamCal
-    ).calibrate()
+    )
+    calibrator.describe()
+    return calibrator.calibrate(polOption)
 
 
 def validateOptions(rcvrRow, calMode, polMode):

@@ -49,15 +49,22 @@ class TestCalibrate(unittest.TestCase):
                 del expectedResults[option]
         print("expectedResults keys:", expectedResults.keys())
         for calOption, result in expectedResults.items():
-            print("CALOPT:", calOption)
             # if calOption != ('Raw', 'XL'):
             #     continue
+
+            # if calOption[0] == 'BeamSwitchedTBOnly':
+            #     calOption = ('DualBeam', calOption[1])
+            #     import ipdb; ipdb.set_trace()
+
+            print("CALOPT:", calOption)
             actual = doCalibrate(self.receiverTable, table, *calOption, attenType='GFM')
+            # import ipdb; ipdb.set_trace()
             expected = numpy.array(result)
             # TODO: ROUNDING??? WAT
             if (calOption[0] == CALOPTS.RAW and
                     calOption[1] == POLOPTS.AVG):
                 actual = numpy.floor(actual)
+
             self.assertTrue(numpy.allclose(actual, expected),
                             "Test for {} failed: {} != {}"
                             .format(calOption,
@@ -97,13 +104,16 @@ class TestCalibrate(unittest.TestCase):
 
     def testRcvr26_40(self):
         """Test Ka Band"""
+
         # TODO: Figure out if it makes any sense to include Avg in here.
         self._testCalibrate(
             "AGBT16A_085_06:55:Rcvr26_40",
             optionsToIgnore=[
                 ('Raw', 'Avg'),
                 # Sparrow does NOT properly calibrate for XL, so we ignore those
+                ('TotalPower', 'XL'),
                 ('BeamSwitchedTBOnly', 'XL'),
+                # ('BeamSwitchedTBOnly', 'YR'),
                 ('BeamSwitchedTBOnly', 'Avg')
             ]
         )
@@ -111,10 +121,12 @@ class TestCalibrate(unittest.TestCase):
     def testRcvrArray75_115(self):
         self._testCalibrate(
             "AGBT17A_423_01:16:RcvrArray75_115",
+            # TODO: Test that these fail gracefully
             optionsToIgnore=[
                 ('Raw', 'YR'),
                 ('Raw', 'Avg')
             ]
+
         )
 
     def testRcvr40_52OOF(self):
@@ -128,5 +140,7 @@ class TestCalibrate(unittest.TestCase):
                              calMode='DualBeam', polMode='XL', attenType='OOF')
 
         # call it's oof calibration
-        self.assertAlmostEqual(-2.43800002314, actual[0], 6)
-        self.assertAlmostEqual(-2.25389923142, actual[-1], 6)
+        # TODO: I get different results for YR and Avg, but I have
+        # nothing to test against
+        self.assertAlmostEqual(actual[0], -2.43800002314, 6)
+        self.assertAlmostEqual(actual[-1], -2.25389923142, 6)

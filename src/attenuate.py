@@ -1,4 +1,15 @@
+import sys
+
 import numpy
+
+# TODO: DRY
+def get(name):
+    current_module = sys.modules[__name__]
+    try:
+        return getattr(current_module, name)
+    except AttributeError:
+        raise AttributeError("Requested {} member {} does not exist!"
+                             .format(current_module.__name__, name))
 
 class Attenuate(object):
     def attenuate(self, table):
@@ -24,6 +35,9 @@ class CalSeqAttenuate(Attenuate):
 
     def attenuate(self, table):
         return self.getTotalPower(table)
+
+
+
 
 
 class CalDiodeAttenuate(Attenuate):
@@ -52,6 +66,40 @@ class OofCalDiodeAttenuate(CalDiodeAttenuate):
         # NOTE: tCal is note used here! It will be used later on
         count = (calOnData - calOffData).mean()
         return 0.5 *  (calOnData + calOffData) / count
+
+    # def attenuate(self, table):
+    #     trackFeed = table.getTrackBeam()
+    #     # TODO: Assert unique
+    #     if table['FEED'][0] = trackFeed:
+    #         return
+#         sigFeed = table.meta['TRCKBEAM']
+#         refFeed = table[table['FEED'] != sigFeed]['FEED'][0]
+
+#         pol = 'L'
+#         sigFeedTable = table.query(FEED=sigFeed,
+#                                    POLARIZE=pol)
+
+#         refFeedTable = table.query(FEED=refFeed,
+#                                    POLARIZE=pol)
+
+#         sigFeedOnData, sigFeedOffData, sigFeedTcal = self.attenFeed(sigFeedTable)
+#         refFeedOnData, refFeedOffData, refFeedTcal = self.attenFeed(refFeedTable)
+#         sigFeedCalib = self.tp(sigFeedOnData, sigFeedOffData)
+#         refFeedCalib = self.tp(refFeedOnData, refFeedOffData)
+
+#         sigFeedTable =
+
+#         tcalQuot = refFeedTcal / sigFeedTcal
+
+
+#         # OOF gets this backwards, so so will us
+#         return refFeedCalib - (sigFeedCalib * tcalQuot)
+
+# class KaAttenuate(CalDiodeAttenuate):
+
+
+#     def attenuate(self, calOnData, calOffData, tCal):
+
 
     # def getTotalPower(self, rawTable, calTable):
     #     # NOTE: We expect that our table has already been filtered

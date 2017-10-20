@@ -31,9 +31,3 @@ class StrippedTable(QueryTable):
         cls._stripTable(table)
         # Return the Table as a StrippedTable
         return cls(table)
-
-
-    def getUnique(self, columnNames):
-        """Given the an iterable of column names, return their unique members"""
-        return numpy.unique(self[columnNames])
-
