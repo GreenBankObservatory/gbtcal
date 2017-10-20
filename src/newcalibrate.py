@@ -11,28 +11,7 @@ def get(name):
         raise AttributeError("Requested {} member {} does not exist!"
                              .format(current_module.__name__, name))
 
-class Calibrate(object):
-    def calibrate(self, rawTable, feedTable):
-        pass
-    # def __init__(self, attenuator):
-    #     self.attenuator = attenuator
-
-    # def attenuate(self, table, pol, feed=None):
-    #     if not self.attenuator:
-    #         raise ValueError("No attenuator instance provided! "
-    #                          "Only non-attenuated calibrations "
-    #                          "are possible")
-    #     self.attenuator.attenuate(table, pol, feed)
-
-class InterStreamCalibrate(Calibrate):
-    def calibrate(self, rawTable, feedTable):
-        pass
-
-# class IntraStreamCalibrate(Calibrate):
-#     def calibrate():
-#         pass
-
-class InterBeamCalibrate(InterStreamCalibrate):
+class InterBeamCalibrate(object):
     def getSigRefFeeds(self, table):
         feeds = table.getUnique('FEED')
         trackBeam = table.meta['TRCKBEAM']
@@ -53,11 +32,9 @@ class InterBeamCalibrate(InterStreamCalibrate):
 
         return sig, ref
 
-    # def attenuate(self, table, pol=None):
-    #     sigFeed, refFeed  = self.getSigRefFeeds(table)
-    #     attenSigData = self.attenuate(table, pol, feed=sigFeed)
-    #     attenRefData = self.attenuate(table, pol, feed=refFeed)
-    #     return attenSigData, attenRefData
+    def calibrate(self, rawTable, feedTable):
+        raise NotImplementedError("All InterBeamCalibrate subclasses "
+                                  "must implement calibrate()")
 
 class OofCalibrate(InterBeamCalibrate):
     def calibrate(self, rawTable, feedTable):
@@ -85,16 +62,13 @@ class BeamSubtractionDBA(InterBeamCalibrate):
         # import ipdb; ipdb.set_trace()
         return sigFeedCalData - refFeedCalData
 
-# class KaCalibrate(InterBeamCalibrate):
-#     def calibrate(self, rawTable, feedTable):
-#         sigFeed, refFeed  = self.getSigRefFeeds(rawTable)
-#         sigData = feedTable.query(FEED=sigFeed)['DATA'][0]
-#         refData = feedTable.query(FEED=refFeed)['DATA'][0]
-#         # import ipdb; ipdb.set_trace()
-#         return refData - sigData
 
+class InterPolCalibrate(object):
+    def calibrate(self, data):
+        raise NotImplementedError("All InterPolCalibrate subclasses "
+                                  "must implement calibrate()")
 
-class InterPolAverage(InterStreamCalibrate):
+class InterPolAverage(InterPolCalibrate):
     def calibrate(self, data):
         if len(data) != 2:
             raise ValueError("InterPolAverage requires exactly two "

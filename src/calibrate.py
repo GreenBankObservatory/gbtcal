@@ -100,12 +100,12 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
 
     # Filter the table based on the above query parameters. If none
     # are given, we'll just keep the whole table
-    filteredTable = dataTable.query(**queryParams)
-    allFeeds = dataTable.getUnique('FEED')
-    filteredTable.meta['ALLFEEDS'] = allFeeds
-    logger.debug("Raw IF/DCR data table:\n%s", dataTable)
-    logger.debug("Filtering based on parameters: %s", queryParams)
-    logger.debug("Filtered IF/DCR data table:\n%s", filteredTable)
+    # filteredTable = dataTable.query(**queryParams)
+    # allFeeds = dataTable.getUnique('FEED')
+    # filteredTable.meta['ALLFEEDS'] = allFeeds
+    # logger.debug("Raw IF/DCR data table:\n%s", dataTable)
+    # logger.debug("Filtering based on parameters: %s", queryParams)
+    # logger.debug("Filtered IF/DCR data table:\n%s", filteredTable)
 
     # Get calibrator first
     # Then use map to determine what data needs to be preserved
@@ -135,7 +135,7 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
 
     # polarization = polOption if polOption != POLOPTS.AVG else None
     calibrator = calibratorClass(
-        filteredTable,
+        dataTable,
         attenuator,
         interPolCal,
         interBeamCal
@@ -159,20 +159,15 @@ def validateOptions(rcvrRow, calMode, polMode):
 
 
 def getReceiverTable():
-    return ReceiverTable.load('rcvrTable.csv')
+    rcvrTableCsv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rcvrTable.csv")
+    return ReceiverTable.load(rcvrTableCsv)
 
 
-def calibrate(projPath, scanNum, calMode, polMode):
+def calibrate(projPath, scanNum, calMode, polMode, attenType):
     rcvrTable = getReceiverTable()
     dataTable = decode(projPath, scanNum)
 
-    # make TraditionalCalibrator object
-    # cal = Calibrators.TraditionalCalibrator(dataTable)
-
-    # call it's oof calibration
-    # return cal.calibrateOOF(polMode)
-
-    return doCalibrate(rcvrTable, dataTable, calMode, polMode)
+    return doCalibrate(rcvrTable, dataTable, calMode, polMode, attenType)
 
 
 def calibrateToFile(projPath, scanNum, calMode, polMode):
