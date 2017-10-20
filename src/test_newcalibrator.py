@@ -49,8 +49,8 @@ class TestCalibrate(unittest.TestCase):
                 del expectedResults[option]
         print("expectedResults keys:", expectedResults.keys())
         for calOption, result in expectedResults.items():
-            # if calOption != ('Raw', 'XL'):
-            #     continue
+            if calOption != ('BeamSwitchedTBOnly', 'YR'):
+                continue
 
             # if calOption[0] == 'BeamSwitchedTBOnly':
             #     calOption = ('DualBeam', calOption[1])
@@ -89,13 +89,7 @@ class TestCalibrate(unittest.TestCase):
 
     def testRcvr40_52(self):
         """Test Q Band"""
-        # TODO: Figure out why we are excluding DualBeam from here.
-        self._testCalibrate(
-            "AGBT16A_473_01:1:Rcvr40_52",
-            # optionsToIgnore=[
-            #     ('DualBeam', 'XL'), ('DualBeam', 'YR'), ('DualBeam', 'Avg')
-            # ]
-        )
+        self._testCalibrate("AGBT16A_473_01:1:Rcvr40_52")
 
     def testRcvr68_92(self):
         """Test W Band"""
@@ -109,10 +103,13 @@ class TestCalibrate(unittest.TestCase):
         self._testCalibrate(
             "AGBT16A_085_06:55:Rcvr26_40",
             optionsToIgnore=[
+                # TODO: Why can't we do this? Follow up with Dave
                 ('Raw', 'Avg'),
                 # Sparrow does NOT properly calibrate for XL, so we ignore those
-                ('TotalPower', 'XL'),
-                ('BeamSwitchedTBOnly', 'XL'),
+                # Sparrow tries to get XL from tracking beam, and instead gets XL from other beam
+
+                # ('TotalPower', 'XL'),
+                # ('BeamSwitchedTBOnly', 'XL'),
                 # ('BeamSwitchedTBOnly', 'YR'),
                 ('BeamSwitchedTBOnly', 'Avg')
             ]
