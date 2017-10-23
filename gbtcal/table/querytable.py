@@ -1,5 +1,25 @@
-from astropy.table import Table, unique
+from astropy.table import Table, Column, unique
 import numpy
+
+def copyTable(table, columns=None):
+    """Create a new table from table with the same Columns
+    but no data
+
+    If columns is given, the new table will have only the
+    provided columns"""
+
+    if not columns:
+        columnsToCopy = table.columns
+    else:
+        columnsToCopy = table[columns].columns
+
+    bareColumns = []
+    for name in columnsToCopy:
+        oldColumn = table[name]
+        newColumn = Column(name=name, dtype=oldColumn.dtype, shape=oldColumn[0].shape)
+        bareColumns.append(newColumn)
+
+    return QueryTable(bareColumns, copy=False)
 
 class QueryTable(Table):
     def query(self, **kwargs):

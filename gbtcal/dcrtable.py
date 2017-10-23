@@ -1,10 +1,25 @@
+import logging
 import os
 
 from astropy.table import Column, hstack, vstack
 import numpy
 
-from util import eprint
-from stripped_table import StrippedTable
+from gbtcal.table.stripped_table import StrippedTable
+
+def initLogging():
+    """Initialize the logger for this module and return it"""
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    return logger
+
+
+logger = initLogging()
 
 
 class DcrTable(StrippedTable):
@@ -172,9 +187,9 @@ class DcrTable(StrippedTable):
             expandedStateTable = vstack([dcrStateTable['SIGREF', 'CAL']] *
                                         len(ifDcrDataTable))
         except TypeError:
-            eprint("Could not stack DCR table. Is length of ifDcrDataTable 0? {}"
+            logger.error("Could not stack DCR table. Is length of ifDcrDataTable 0? {}"
                    .format(len(ifDcrDataTable)))
-            eprint(ifDcrDataTable)
+            logger.error(ifDcrDataTable)
             raise
 
         # We now have two tables, both the same length, and they can be simply
@@ -213,7 +228,7 @@ class DcrTable(StrippedTable):
                                                     len(uniqueSigRefStates),
                                                     len(uniqueCalStates))
         if len(uniquePorts) != reshapedData.shape[1]:
-            eprint("Invalid shape? These should be equal: len(uniquePorts): "
+            logger.error("Invalid shape? These should be equal: len(uniquePorts): "
                    "{}; reshapedData.shape[1]: {}"
                    .format(len(uniquePorts), reshapedData.shape[1]))
 
@@ -236,7 +251,7 @@ class DcrTable(StrippedTable):
                                                                portIndex, phase]
                     if not numpy.all(dataForPortAndPhase ==
                                      reshapedData[..., portIndex, sigRefState, calState]):
-                        eprint(
+                        logger.error(
                             "Phase method data does not match reshape method data!")
 
                     stuff.append(dcrDataTable['DATA'][..., portIndex, phase])

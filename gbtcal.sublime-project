@@ -13,13 +13,9 @@
 		{
 			"folder_exclude_patterns":
 			[
-				"*_dcr_decode_env"
+				"*_gbtcal_env"
 			],
 			"path": "."
 		}
-	],
-	"settings":
-	{
-		"trim_trailing_white_space_on_save": true
-	}
+	]
 }
