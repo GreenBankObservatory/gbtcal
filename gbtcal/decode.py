@@ -5,8 +5,8 @@ from astropy.table import Column, Table, vstack
 
 import numpy
 
-from util import wprint
-from dcr_table import StrippedTable, DcrTable
+from gbtcal.dcrtable import DcrTable
+from gbtcal.table.stripped_table import StrippedTable
 
 ###
 # Author: Thomas Chamberlin
@@ -62,9 +62,10 @@ def getFitsForScan(projPath, scanNum):
                 try:
                     managerFitsMap[manager] = fits.open(fitsPath)
                 except IOError:
-                    wprint("{} is listed in ScanLog.fits as having data for "
-                           "scan {}, but no such data exists in {}! Skipping."
-                           .format(manager, scanName, fitsPath))
+                    # TODO: logger
+                    print("{} is listed in ScanLog.fits as having data for "
+                          "scan {}, but no such data exists in {}! Skipping."
+                          .format(manager, scanName, fitsPath))
 
     return managerFitsMap
 

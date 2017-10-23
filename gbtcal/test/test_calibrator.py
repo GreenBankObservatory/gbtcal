@@ -1,30 +1,30 @@
 import ast
+import os
 import unittest
 
 import numpy
 
-from Calibrators import (
-    Calibrator,
-    KaCalibrator,
-    TraditionalCalibrator,
-    WBandCalibrator,
-    ArgusCalibrator,
-)
-from calibrate import doCalibrate
-from dcr_decode import decode
+from gbtcal.decode import decode
+from gbtcal.calibrate import doCalibrate
+from gbtcal.interbeamops import BeamSubtractionDBA
+from gbtcal.interpolops import InterPolAverage
+from gbtcal.attenuate import CalDiodeAttenuate
 from rcvr_table import ReceiverTable
 from constants import POLOPTS, CALOPTS
 
+SCRIPTPATH = os.path.dirname(os.path.abspath(__file__))
 
 def readResultsFile(filepath):
     with open(filepath) as f:
         stuff = ast.literal_eval(f.read())
     return stuff
 
+def arraySummary(array):
+        return "[{} ... {}]".format(array[0], array[-1])
 
-class TestAgainstSparrowResults(unittest.TestCase):
+class TestCalibrate(unittest.TestCase):
     def setUp(self):
-        self.receiverTable = ReceiverTable.load('rcvrTable.test.csv')
+        self.receiverTable = ReceiverTable.load('test/rcvrTable.test.csv')
 
     def getScanNum(self, testProjPath):
         """Given a test project path, derive the scan number and return it.
@@ -39,50 +39,44 @@ class TestAgainstSparrowResults(unittest.TestCase):
 
         return int(decomposedPath[1])
 
-    def getReceiver(self, testProjPath):
-        """Given a test project path, derive the receiver and return it.
-        testProjPath must be of the format:
-        "<projName>:<scanNum>:<receiver>" or a ValueError will be raised
-        """
-        decomposedPath = testProjPath.split(":")
-        if len(decomposedPath) != 3:
-            raise ValueError("testProjPath must be of the format "
-                             "<projName>:<scanNum>:<receiver>; got {}"
-                             .format(testProjPath))
-        return decomposedPath[2]
-
-    def arraySummary(self, array):
-        return "[{} ... {}]".format(array[0], array[-1])
-
     def _testCalibrate(self, testDataProjName, optionsToIgnore=[]):
-        projPath = "../test/data/{}".format(testDataProjName)
+        projPath = "{}/data/{}".format(SCRIPTPATH,
+                                       testDataProjName)
         scanNum = self.getScanNum(projPath)
-        expectedResultsPath = "../test/results/{}".format(testDataProjName)
+        expectedResultsPath = (
+            "{}/results/{}"
+            .format(SCRIPTPATH,
+                    testDataProjName)
+        )
         expectedResults = readResultsFile(expectedResultsPath)
 
         table = decode(projPath, scanNum)
         for option in optionsToIgnore:
             if option in expectedResults:
                 del expectedResults[option]
-
+        print("expectedResults keys:", expectedResults.keys())
         for calOption, result in expectedResults.items():
-            print("CALOPTION:", calOption)
-            actual = doCalibrate(self.receiverTable, table,
-                                 *calOption)
+            # if calOption != ('BeamSwitchedTBOnly', 'YR'):
+            #     continue
+
+            # if calOption[0] == 'BeamSwitchedTBOnly':
+            #     calOption = ('DualBeam', calOption[1])
+            #     import ipdb; ipdb.set_trace()
+
+            print("CALOPT:", calOption)
+            actual = doCalibrate(self.receiverTable, table, *calOption, attenType='GFM')
+            # import ipdb; ipdb.set_trace()
             expected = numpy.array(result)
             # TODO: ROUNDING??? WAT
             if (calOption[0] == CALOPTS.RAW and
                     calOption[1] == POLOPTS.AVG):
                 actual = numpy.floor(actual)
+
             self.assertTrue(numpy.allclose(actual, expected),
                             "Test for {} failed: {} != {}"
                             .format(calOption,
-                                    self.arraySummary(actual),
-                                    self.arraySummary(expected)))
-
-    def testRcvr1_2(self):
-        """Test L Band"""
-        self._testCalibrate("AGBT16B_285_01:1:Rcvr1_2")
+                                    arraySummary(actual),
+                                    arraySummary(expected)))
 
     def testRcvr2_3(self):
         """Test S Band"""
@@ -102,13 +96,7 @@ class TestAgainstSparrowResults(unittest.TestCase):
 
     def testRcvr40_52(self):
         """Test Q Band"""
-        # TODO: Figure out why we are excluding DualBeam from here.
-        self._testCalibrate(
-            "AGBT16A_473_01:1:Rcvr40_52",
-            optionsToIgnore=[
-                ('DualBeam', 'XL'), ('DualBeam', 'YR'), ('DualBeam', 'Avg')
-            ]
-        )
+        self._testCalibrate("AGBT16A_473_01:1:Rcvr40_52")
 
     def testRcvr68_92(self):
         """Test W Band"""
@@ -117,31 +105,47 @@ class TestAgainstSparrowResults(unittest.TestCase):
 
     def testRcvr26_40(self):
         """Test Ka Band"""
+
         # TODO: Figure out if it makes any sense to include Avg in here.
         self._testCalibrate(
             "AGBT16A_085_06:55:Rcvr26_40",
             optionsToIgnore=[
+                # TODO: Why can't we do this? Follow up with Dave
                 ('Raw', 'Avg'),
                 # Sparrow does NOT properly calibrate for XL, so we ignore those
-                ('BeamSwitchedTBOnly', 'XL'),
+                # Sparrow tries to get XL from tracking beam, and instead gets XL from other beam
+
+                # ('TotalPower', 'XL'),
+                # ('BeamSwitchedTBOnly', 'XL'),
+                # ('BeamSwitchedTBOnly', 'YR'),
                 ('BeamSwitchedTBOnly', 'Avg')
             ]
         )
 
-    def testRcvr75_115(self):
-        pass
+    def testRcvrArray75_115(self):
+        self._testCalibrate(
+            "AGBT17A_423_01:16:RcvrArray75_115",
+            # TODO: Test that these fail gracefully
+            optionsToIgnore=[
+                ('Raw', 'YR'),
+                ('Raw', 'Avg')
+            ]
+
+        )
 
     def testRcvr40_52OOF(self):
 
         testDataProjName = "TPTCSOOF_091031"
-        projPath = "../test/data/{}".format(testDataProjName)
+        projPath = "{}/data/{}".format(SCRIPTPATH,
+                                       testDataProjName)
         scanNum = 45
         dataTable = decode(projPath, scanNum)
 
-        actual = doCalibrate(self.receiverTable, dataTable, *calOption,
-                             attenType='OOF')
+        actual = doCalibrate(self.receiverTable, dataTable,
+                             calMode='DualBeam', polMode='XL', attenType='OOF')
 
         # call it's oof calibration
-
-        self.assertAlmostEqual(-2.43800002314, actual[0][0], 6)
-        self.assertAlmostEqual(-2.25389923142, actual[0][-1], 6)
+        # TODO: I get different results for YR and Avg, but I have
+        # nothing to test against
+        self.assertAlmostEqual(actual[0], -2.43800002314, 6)
+        self.assertAlmostEqual(actual[-1], -2.25389923142, 6)

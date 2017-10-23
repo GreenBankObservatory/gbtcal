@@ -1,32 +1,18 @@
 import logging
 import os
 
-from astropy.table import Column, join
+from astropy.table import Column
 from astropy.io import fits
 import numpy
 
-from constants import POLS, POLOPTS, CALOPTS
-from dcr_decode import getFitsForScan, getTcal, getRcvrCalTable
-from querytable import QueryTable
-from attenuate import OofCalDiodeAttenuate
-from newcalibrate import OofCalibrate
+from constants import POLOPTS
+from gbtcal.decode import getFitsForScan, getTcal, getRcvrCalTable
+from gbtcal.table.querytable import QueryTable, copyTable
+from gbtcal.attenuate import OofCalDiodeAttenuate
+from gbtcal.interbeamops import OofCalibrate
 from WBandCalibration import WBandCalibration
 from ArgusCalibration import ArgusCalibration
 
-
-def copyTable(table, columns=None):
-    if not columns:
-        columnsToCopy = table.columns
-    else:
-        columnsToCopy = table[columns].columns
-
-    bareColumns = []
-    for name in columnsToCopy:
-        oldColumn = table[name]
-        newColumn = Column(name=name, dtype=oldColumn.dtype, shape=oldColumn[0].shape)
-        bareColumns.append(newColumn)
-
-    return QueryTable(bareColumns, copy=False)
 
 
 def initLogging():

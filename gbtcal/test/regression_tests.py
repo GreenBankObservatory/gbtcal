@@ -58,8 +58,8 @@ def testAllResults():
     with open(dataSrcDctFn, 'r') as f:
         dataSrcDct = eval(f.read())
 
-    projLimit = None
-    scanLimit = None
+    projLimit = 10
+    scanLimit = 10
 
     # we simply aren't supporting all receivers
     # Rcvr18_26: The K-band receiver has been retired and is

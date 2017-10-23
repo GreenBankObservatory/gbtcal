@@ -5,14 +5,28 @@ import os
 import traceback
 
 import numpy
-from util import eprint
 
 from dcr_table import DcrTable
-from dcr_decode import getFitsForScan
+from gbtcal.decode import getFitsForScan
 
 # These are not unit tests! This is a regression test suite that is intended
 # to ensure that the "new decoding code" results in the exact answers as the
 # original sparrow code.
+
+def initLogging():
+    """Initialize the logger for this module and return it"""
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    return logger
+
+
+logger = initLogging()
 
 
 def scanRegressionTest(projPath,
@@ -98,8 +112,8 @@ def testProcessDcrData(sparrow_results_dir, results_manifest):
             try:
                 projName, projParentPath, scans = projInfo
             except ValueError as e:
-                eprint(traceback.format_exc(e))
-                eprint("Invalid projInfo: {}".format(projInfo))
+                logger.error(traceback.format_exc(e))
+                logger.error("Invalid projInfo: {}".format(projInfo))
 
             projPath = os.path.join(projParentPath, projName)
 
@@ -118,8 +132,8 @@ def testProcessDcrData(sparrow_results_dir, results_manifest):
                     with open(sparrow_results_file) as f:
                         resultsDict = ast.literal_eval(f.read())
                 except IOError as e:
-                    eprint(e)
-                    eprint("Could not find sparrow results file {}"
+                    logger.error(e)
+                    logger.error("Could not find sparrow results file {}"
                            .format(sparrow_results_file))
                     break
 
@@ -140,8 +154,8 @@ def testProcessDcrData(sparrow_results_dir, results_manifest):
                         resultsDict=resultsDict
                     )
                 except Exception as e:
-                    eprint(traceback.format_exc(e))
-                    eprint("Something went wrong for project {}"
+                    logger.error(traceback.format_exc(e))
+                    logger.error("Something went wrong for project {}"
                            .format(projName))
                 else:
                     print("Results for sparrow file '{}' MATCH results "

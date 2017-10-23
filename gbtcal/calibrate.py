@@ -2,12 +2,12 @@ import logging
 import os
 import numpy
 
-import newcalibrator
-from rcvr_table import ReceiverTable
-from constants import CALOPTS, POLOPTS, ATTENTYPES
-from dcr_decode import decode
-import attenuate
-import newcalibrate
+from gbtcal.rcvr_table import ReceiverTable
+from gbtcal.constants import CALOPTS, POLOPTS, ATTENTYPES
+from gbtcal.decode import decode
+import gbtcal.attenuate
+import gbtcal.calibrate
+import gbtcal.calibrator
 
 def initLogging():
     """Initialize the logger for this module and return it"""
@@ -49,7 +49,6 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
     attenuator = None
     interPolCal = None
     interBeamCal = None
-    queryParams = {}
 
     if calMode != CALOPTS.RAW:
         # If the user has requested that we do any mode other than raw
@@ -64,52 +63,20 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
             raise ValueError("Attenuator of type {} has not been defined for "
                              "receiver {}".format(attenType, receiver))
 
-        attenuator = attenuate.get(attenuatorName)()
-
+        attenuator = gbtcal.attenuate.get(attenuatorName)()
 
     if polMode == POLOPTS.AVG:
         # If the user has requested that we do polarization averaging,
         # we need to enable our interPolCal
         interPolCalName = receiverRow['InterPolCal'][0]
-        interPolCal = newcalibrate.get(interPolCalName)()
-    else:
-        # Otherwise we set polarize to the parsed polMode, polOption.
-        # So, it will be one of X, Y, R, or L. Since we are not
-        # averaging pols, we will instead be simply selecting a
-        # polarization -- this is the one to select
-        polsInTrackFeed = dataTable.getTrackFeedData().getUnique('POLARIZE')
-        # if polOption in polsInTrackFeed:
-        #     queryParams['POLARIZE'] = polOption
-        # else:
-        #     logger.warning("Polarization %s does not exist within track feed "
-        #                    "(which contains %s), so no filtering on "
-        #                    "polarization will be performed",
-        #                    polOption, list(polsInTrackFeed))
+        interPolCal = gbtcal.interbeamops.get(interPolCalName)()
 
     if calMode in [CALOPTS.DUALBEAM, CALOPTS.BEAMSWITCHEDTBONLY]:
         # If the user has selected a mode that operates on two beams,
         # enable our interBeamCal
         interBeamCalName = receiverRow['InterBeamCal'][0]
         # interBeamCalName = 'OofCalibrate'
-        interBeamCal = newcalibrate.get(interBeamCalName)()
-    # else:
-        # Otherwise we set feed to the track beam. This is the signal
-        # beam, and it is what we care about when doing total power, etc.
-        # InterBeamCal needs two beams; here we only need one
-        # queryParams['FEED'] = dataTable.meta['TRCKBEAM']
-
-    # Filter the table based on the above query parameters. If none
-    # are given, we'll just keep the whole table
-    # filteredTable = dataTable.query(**queryParams)
-    # allFeeds = dataTable.getUnique('FEED')
-    # filteredTable.meta['ALLFEEDS'] = allFeeds
-    # logger.debug("Raw IF/DCR data table:\n%s", dataTable)
-    # logger.debug("Filtering based on parameters: %s", queryParams)
-    # logger.debug("Filtered IF/DCR data table:\n%s", filteredTable)
-
-    # Get calibrator first
-    # Then use map to determine what data needs to be preserved
-    # then instantiate calibrator with filtered table
+        interBeamCal = gbtcal.interbeamops.get(interBeamCalName)()
 
     try:
         if attenType == ATTENTYPES.OOF:
@@ -121,7 +88,7 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
                          .format(receiver))
 
     try:
-        calibratorClass = getattr(newcalibrator, calibratorStr)
+        calibratorClass = getattr(gbtcal.calibrator, calibratorStr)
     except AttributeError:
         raise ValueError("Receiver {}'s indicated calibration "
                          "strategy '{}' could not be found! Please "
@@ -192,14 +159,10 @@ if __name__ == "__main__":
 
     # Here we provide a quick and easy way to calibrate stuff:
     args = parser.parse_args()
-    projPath = args.projdir
-    scanNum = args.scannum
-    calMode = args.calmode
-    polMode = args.polmode
 
     # calMode = 'DualBeam'
     # polMode = 'XL'
-    calibrateToFile(projPath, scanNum, calMode, polMode)
+    calibrateToFile(args.projdir, args.scannum, args.calmode, args.polmode)
     # TBF; derive from args
     # projPath = "/home/archive/science-data/11B/AGBT11B_023_02"
     # scanNum = 1

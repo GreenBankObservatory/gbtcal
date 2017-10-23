@@ -25,10 +25,10 @@ import numpy
 from ConfigParser import ConfigParser
 
 from Rcvr68_92 import Rcvr68_92
-from dcr_decode import getFitsForScan
-from dcr_decode import getDcrDataDescriptors
+from gbtcal.decode import getFitsForScan
+from gbtcal.decode import getDcrDataDescriptors
 
-from dcr_table import DcrTable
+from gbtcal.dcrtable import DcrTable
 
 
 class Backend:
