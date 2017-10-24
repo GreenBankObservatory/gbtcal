@@ -13,7 +13,7 @@ SCRIPTPATH = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger(__name__)
 
-def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
+def doCalibrate(receiverTable, dataTable, calMode, polMode, calibrator=None):
     receiver = dataTable.meta['RECEIVER']
     receiverRow = receiverTable.getReceiverInfo(receiver)
 
@@ -42,8 +42,8 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
         attenuatorName = receiverRow['Attenuator'][0]
 
         if not attenuatorName:
-            raise ValueError("Attenuator of type {} has not been defined for "
-                             "receiver {}".format(attenType, receiver))
+            raise ValueError("Attenuator has not been defined for "
+                             "receiver {}".format(receiver))
 
         attenuator = gbtcal.attenuate.get(attenuatorName)()
 
@@ -60,27 +60,25 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
         interBeamCal = gbtcal.interbeamops.get(interBeamCalName)()
 
     try:
-        # TODO: This should not be in this library! This should
-        # be extracted into the OOF code itself. If OOF wants to define
-        # custom calibrators, fine, it can do that -- they shouldn't
-        # live here
-        if attenType == ATTENTYPES.OOF:
-            calibratorStr = receiverRow['OofCalibrator'][0]
-        else:
-            calibratorStr = receiverRow['Cal Strategy'][0]
+        calibratorStr = receiverRow['Cal Strategy'][0]
     except IndexError:
         raise ValueError("Receiver '{}' does not exist in the receiver table!"
                          .format(receiver))
 
-    # Get the calibrator class object from the calibrator module
-    try:
-        calibratorClass = getattr(gbtcal.calibrator, calibratorStr)
-    except AttributeError:
-        raise ValueError("Receiver {}'s indicated calibration "
-                         "strategy '{}' could not be found! Please "
-                         "check the receiver table to ensure it is "
-                         "up to date."
-                         .format(receiver, calibratorStr))
+    # If a calibrator has been given, use it
+    if calibrator:
+        calibratorClass = calibrator
+    # Otherwise we fall back to default defined in the table
+    else:
+        try:
+            # Get the calibrator class object from the calibrator module
+            calibratorClass = getattr(gbtcal.calibrator, calibratorStr)
+        except AttributeError:
+            raise ValueError("Receiver {}'s indicated calibration "
+                             "strategy '{}' could not be found! Please "
+                             "check the receiver table to ensure it is "
+                             "up to date."
+                             .format(receiver, calibratorStr))
 
     logger.debug("Beginning calibration with calibrator: %s",
                  calibratorClass.__name__)
@@ -110,14 +108,14 @@ def validateOptions(rcvrRow, calMode, polMode):
                          .format(polMode, rcvrName, polOptions))
 
 
-def calibrate(projPath, scanNum, calMode, polMode, attenType, rcvrTablePath=None):
+def calibrate(projPath, scanNum, calMode, polMode, rcvrTablePath=None, calibrator=None):
     if not rcvrTablePath:
         rcvrTablePath = os.path.join(SCRIPTPATH, "rcvrTable.csv")
 
     rcvrTable = ReceiverTable.load(rcvrTablePath)
     dataTable = decode(projPath, scanNum)
 
-    return doCalibrate(rcvrTable, dataTable, calMode, polMode, attenType)
+    return doCalibrate(rcvrTable, dataTable, calMode, polMode, calibrator=calibrator)
 
 
 def calibrateToFile(projPath, scanNum, calMode, polMode):
