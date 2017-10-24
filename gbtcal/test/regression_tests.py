@@ -1,11 +1,14 @@
+#!/usr/bin/env python
+
 import os
 import numpy
 import traceback
 from datetime import datetime
 from astropy.io import fits
 
-from calibrate import calibrate
+from gbtcal.calibrate import calibrate
 
+SCRIPTPATH = os.path.dirname(os.path.abspath(__file__))
 
 def hasRedundantScanNums(projPath):
     "Projects that repeat scan numbers are problematic"
@@ -54,7 +57,7 @@ def testAllResults():
     sparrow_results_dir = '/home/scratch/pmargani/allCalDcrData'
 
     # where is the location of all the DCR data we want to test?
-    dataSrcDctFn = "../rcvrDCRscans.txt"
+    dataSrcDctFn = "{}/rcvrDCRscans.txt".format(SCRIPTPATH)
     with open(dataSrcDctFn, 'r') as f:
         dataSrcDct = eval(f.read())
 

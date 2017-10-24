@@ -9,8 +9,8 @@ from gbtcal.calibrate import doCalibrate
 from gbtcal.interbeamops import BeamSubtractionDBA
 from gbtcal.interpolops import InterPolAverage
 from gbtcal.attenuate import CalDiodeAttenuate
-from rcvr_table import ReceiverTable
-from constants import POLOPTS, CALOPTS
+from gbtcal.rcvr_table import ReceiverTable
+from gbtcal.constants import POLOPTS, CALOPTS
 
 SCRIPTPATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -24,7 +24,8 @@ def arraySummary(array):
 
 class TestCalibrate(unittest.TestCase):
     def setUp(self):
-        self.receiverTable = ReceiverTable.load('test/rcvrTable.test.csv')
+        self.receiverTable = ReceiverTable.load('{}/rcvrTable.test.csv'
+                                                .format(SCRIPTPATH))
 
     def getScanNum(self, testProjPath):
         """Given a test project path, derive the scan number and return it.
