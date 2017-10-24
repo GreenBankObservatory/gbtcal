@@ -1,18 +1,21 @@
 import ast
+import logging
 import os
 import unittest
 
 import numpy
 
-from gbtcal.decode import decode
-from gbtcal.calibrate import doCalibrate
+from gbtcal.calibrate import calibrate
 from gbtcal.interbeamops import BeamSubtractionDBA
 from gbtcal.interpolops import InterPolAverage
 from gbtcal.attenuate import CalDiodeAttenuate
 from gbtcal.rcvr_table import ReceiverTable
 from gbtcal.constants import POLOPTS, CALOPTS
 
+logger = logging.getLogger(__name__)
+
 SCRIPTPATH = os.path.dirname(os.path.abspath(__file__))
+rcvrTablePath = os.path.join(SCRIPTPATH, "rcvrTable.test.csv")
 
 def readResultsFile(filepath):
     with open(filepath) as f:
@@ -51,26 +54,26 @@ class TestCalibrate(unittest.TestCase):
         )
         expectedResults = readResultsFile(expectedResultsPath)
 
-        table = decode(projPath, scanNum)
         for option in optionsToIgnore:
             if option in expectedResults:
                 del expectedResults[option]
-        print("expectedResults keys:", expectedResults.keys())
+        logger.info("Preparing to execute the following tests: %s",
+                    expectedResults.keys())
         for calOption, result in expectedResults.items():
+            # NOTE: Uncomment this to run only a specific type of test
             # if calOption != ('BeamSwitchedTBOnly', 'YR'):
             #     continue
 
-            # if calOption[0] == 'BeamSwitchedTBOnly':
-            #     calOption = ('DualBeam', calOption[1])
-            #     import ipdb; ipdb.set_trace()
-
-            print("CALOPT:", calOption)
-            actual = doCalibrate(self.receiverTable, table, *calOption, attenType='GFM')
-            # import ipdb; ipdb.set_trace()
+            logger.info("Executing test of: %s", calOption)
+            calMode = calOption[0]
+            polMode = calOption[1]
+            actual = calibrate(projPath, scanNum, calMode, polMode,
+                               attenType='GFM', rcvrTablePath=rcvrTablePath)
             expected = numpy.array(result)
-            # TODO: ROUNDING??? WAT
             if (calOption[0] == CALOPTS.RAW and
                     calOption[1] == POLOPTS.AVG):
+                # NOTE: We must round here to match what Sparrow does.
+                # We have decided that our method is more accurate.
                 actual = numpy.floor(actual)
 
             self.assertTrue(numpy.allclose(actual, expected),
@@ -111,15 +114,21 @@ class TestCalibrate(unittest.TestCase):
         self._testCalibrate(
             "AGBT16A_085_06:55:Rcvr26_40",
             optionsToIgnore=[
-                # TODO: Why can't we do this? Follow up with Dave
+                # We don't do this because it isn't scientifically
+                # useful to average polarizations for Ka -- they
+                # exist in different beams, and thus look at different parts
+                # of the sky (at any given time, at least)
                 ('Raw', 'Avg'),
+                ('BeamSwitchedTBOnly', 'Avg'),
+
+
                 # Sparrow does NOT properly calibrate for XL, so we ignore those
                 # Sparrow tries to get XL from tracking beam, and instead gets XL from other beam
 
                 # ('TotalPower', 'XL'),
-                # ('BeamSwitchedTBOnly', 'XL'),
+                ('BeamSwitchedTBOnly', 'XL'),
                 # ('BeamSwitchedTBOnly', 'YR'),
-                ('BeamSwitchedTBOnly', 'Avg')
+                # 
             ]
         )
 
@@ -140,10 +149,13 @@ class TestCalibrate(unittest.TestCase):
         projPath = "{}/data/{}".format(SCRIPTPATH,
                                        testDataProjName)
         scanNum = 45
-        dataTable = decode(projPath, scanNum)
 
-        actual = doCalibrate(self.receiverTable, dataTable,
-                             calMode='DualBeam', polMode='XL', attenType='OOF')
+        actual = calibrate(projPath,
+                           scanNum,
+                           calMode='DualBeam',
+                           polMode='XL',
+                           attenType='OOF',
+                           rcvrTablePath=rcvrTablePath)
 
         # call it's oof calibration
         # TODO: I get different results for YR and Avg, but I have

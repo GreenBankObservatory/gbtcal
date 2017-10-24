@@ -4,23 +4,10 @@ import os
 from astropy.table import Column, hstack, vstack
 import numpy
 
-from gbtcal.table.stripped_table import StrippedTable
-
-def initLogging():
-    """Initialize the logger for this module and return it"""
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-    return logger
+from table.stripped_table import StrippedTable
 
 
-logger = initLogging()
-
+logger = logging.getLogger(__name__)
 
 class DcrTable(StrippedTable):
     """A Table representing DCR/IF data from a single scan
@@ -192,6 +179,9 @@ class DcrTable(StrippedTable):
             logger.error(ifDcrDataTable)
             raise
 
+        # Delete this meta key; we don't need it and it
+        # results in a warning
+        del expandedStateTable.meta['EXTNAME']
         # We now have two tables, both the same length, and they can be simply
         # stacked together horizontally.
         filteredIfTable = hstack([filteredIfTable, expandedStateTable])
