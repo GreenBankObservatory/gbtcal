@@ -7,29 +7,13 @@ import numpy
 
 from constants import POLOPTS
 from gbtcal.decode import getFitsForScan, getTcal, getRcvrCalTable
-from gbtcal.table.querytable import QueryTable, copyTable
+from table.querytable import QueryTable, copyTable
 from gbtcal.attenuate import OofCalDiodeAttenuate
 from gbtcal.interbeamops import OofCalibrate
 from WBandCalibration import WBandCalibration
 from ArgusCalibration import ArgusCalibration
 
-
-
-def initLogging():
-    """Initialize the logger for this module and return it"""
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-    return logger
-
-
-logger = initLogging()
-
+logger = logging.getLogger(__name__)
 
 class Calibrator(object):
     # By default we assume that we have two polarizations per feed,
@@ -225,7 +209,7 @@ class Calibrator(object):
 
         logger.debug("Feed table after inter-beam calibration/beam selection:\n%s",
                      feedTable)
-        logger.debug("Final calibrated data:\n%s", data)
+        logger.debug("Final calibrated data: [%f ... %f]", data[0], data[-1])
         return data
 
 

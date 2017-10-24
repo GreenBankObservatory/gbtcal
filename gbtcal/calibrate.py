@@ -6,24 +6,12 @@ from gbtcal.rcvr_table import ReceiverTable
 from gbtcal.constants import CALOPTS, POLOPTS, ATTENTYPES
 from gbtcal.decode import decode
 import gbtcal.attenuate
-import gbtcal.calibrate
 import gbtcal.calibrator
 
-def initLogging():
-    """Initialize the logger for this module and return it"""
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-    return logger
+SCRIPTPATH = os.path.dirname(os.path.abspath(__file__))
 
-
-logger = initLogging()
-
+logger = logging.getLogger(__name__)
 
 def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
     receiver = dataTable.meta['RECEIVER']
@@ -54,9 +42,6 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
         # If the user has requested that we do any mode other than raw
         # it is assumed that we do attenuation
 
-        # if attenType == ATTENTYPES.OOF:
-        #     attenuatorName = receiverRow['OofAttenuator'][0]
-        # else:
         attenuatorName = receiverRow['Attenuator'][0]
 
         if not attenuatorName:
@@ -79,6 +64,10 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
         interBeamCal = gbtcal.interbeamops.get(interBeamCalName)()
 
     try:
+        # TODO: This should not be in this library! This should
+        # be extracted into the OOF code itself. If OOF wants to define
+        # custom calibrators, fine, it can do that -- they shouldn't
+        # live here
         if attenType == ATTENTYPES.OOF:
             calibratorStr = receiverRow['OofCalibrator'][0]
         else:
@@ -96,8 +85,8 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
                          "up to date."
                          .format(receiver, calibratorStr))
 
-    logger.debug("Beginning calibration with calibrator %s",
-                 calibratorClass.__class__.__name__)
+    logger.debug("Beginning calibration with calibrator: %s",
+                 calibratorClass.__name__)
 
 
     # polarization = polOption if polOption != POLOPTS.AVG else None
@@ -125,13 +114,11 @@ def validateOptions(rcvrRow, calMode, polMode):
                          .format(polMode, rcvrName, polOptions))
 
 
-def getReceiverTable():
-    rcvrTableCsv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rcvrTable.csv")
-    return ReceiverTable.load(rcvrTableCsv)
+def calibrate(projPath, scanNum, calMode, polMode, attenType, rcvrTablePath=None):
+    if not rcvrTablePath:
+        rcvrTablePath = os.path.join(SCRIPTPATH, "rcvrTable.csv")
 
-
-def calibrate(projPath, scanNum, calMode, polMode, attenType):
-    rcvrTable = getReceiverTable()
+    rcvrTable = ReceiverTable.load(rcvrTablePath)
     dataTable = decode(projPath, scanNum)
 
     return doCalibrate(rcvrTable, dataTable, calMode, polMode, attenType)

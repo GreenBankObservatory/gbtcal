@@ -6,7 +6,7 @@ from astropy.table import Column, Table, vstack
 import numpy
 
 from gbtcal.dcrtable import DcrTable
-from gbtcal.table.stripped_table import StrippedTable
+from table.stripped_table import StrippedTable
 
 ###
 # Author: Thomas Chamberlin
