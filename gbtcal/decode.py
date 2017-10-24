@@ -8,19 +8,6 @@ import numpy
 from gbtcal.dcrtable import DcrTable
 from table.stripped_table import StrippedTable
 
-###
-# Author: Thomas Chamberlin
-# Date: 8/4/2017
-
-# This script is in implementation of the techniques described in:
-# https://safe.nrao.edu/wiki/bin/view/GB/Data/DCRDataDecoding
-# and
-# https://safe.nrao.edu/wiki/bin/view/GB/Software/SparrowDataProcessing
-# Paul's script, 'dcrDecode.py', did all the hard work -- this is largely
-# an effort to increase my understanding of the 'decoding' and 'calibration'
-# processes. I also wanted to familiarize myself with the facilities
-# in numpy and astropy for dealing with FITS files in a sensible manner.
-###
 
 # All valid receivers that use DCR data
 # TODO: This should be derived from an external table

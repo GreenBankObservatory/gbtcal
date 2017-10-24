@@ -1,3 +1,7 @@
+"""Calibrator class hierarchy. A Calibrator is responsible for guiding
+the calibration pipeline in a specific manner, usually for a receiver
+or category of receivers"""
+
 import logging
 import os
 
@@ -9,22 +13,22 @@ from constants import POLOPTS
 from gbtcal.decode import getFitsForScan, getTcal, getRcvrCalTable
 from table.querytable import QueryTable, copyTable
 from gbtcal.attenuate import OofCalDiodeAttenuate
-from gbtcal.interbeamops import OofCalibrate
+from gbtcal.interbeamops import OofInterBeamCalibrate
 from WBandCalibration import WBandCalibration
 from ArgusCalibration import ArgusCalibration
 
 logger = logging.getLogger(__name__)
 
 class Calibrator(object):
-    # By default we assume that we have two polarizations per feed,
-    # so we don't create a feed -> pols mapping. This effectively means that
-    # we are saying "for any requested polarization, we expect to find it
-    # in the signal beam"
+    """Outlines a three-step calibration pipeline. Stages are only
+    executed if a class is provided to execute them"""
 
     def __init__(self, table,
                  attenuator=None,
                  interPolCalibrator=None,
                  interBeamCalibrator=None):
+        self.logger = logging.getLogger("{}.{}".format(__name__,
+                                                       self.__class__.__name__))
         self.table = table.copy()
         self.projPath = table.meta['PROJPATH']
         self.scanNum = table.meta['SCAN']
@@ -40,32 +44,30 @@ class Calibrator(object):
         )
 
     def describe(self):
-        logger.info("My name is %s", self.__class__.__name__)
-        logger.info("I will be calibrating this data:\n%s",
+        """Describe the functionality of this Calibrator in its current configuration"""
+        self.logger.info("My name is %s", self.__class__.__name__)
+        self.logger.info("I will be calibrating this data:\n%s",
                     self.table)
 
         if self.attenuator:
-            logger.info("I will perform attenuation using: %s",
+            self.logger.info("I will perform attenuation using: %s",
                         self.attenuator.__class__.__name__)
         else:
-            logger.info("I will perform NO attenuation")
+            self.logger.info("I will perform NO attenuation")
 
         if self.interPolCalibrator:
-            logger.info("I will perform inter-pol calibration using: %s",
+            self.logger.info("I will perform inter-pol calibration using: %s",
                         self.interPolCalibrator.__class__.__name__)
         else:
-            logger.info("I will perform NO inter-pol calibration")
+            self.logger.info("I will perform NO inter-pol calibration")
 
         if self.interBeamCalibrator:
-            logger.info("I will perform inter-beam calibration using: %s",
+            self.logger.info("I will perform inter-beam calibration using: %s",
                         self.interBeamCalibrator.__class__.__name__)
         else:
-            logger.info("I will perform NO inter-beam calibration")
+            self.logger.info("I will perform NO inter-beam calibration")
 
     def getFeedForPol(self, pol):
-
-            # If no mapping is defined we will need to find it
-
         trackFeed = self.table.meta['TRCKBEAM']
         # First, find all of the feeds that contain the requested
         # polarization
@@ -76,10 +78,10 @@ class Calibrator(object):
             feedsForPol = self.table.query(POLARIZE=pol).getUnique('FEED')
 
         if trackFeed in feedsForPol:
-            logger.debug("Selecting track feed")
+            self.logger.debug("Selecting track feed")
             dataFeed = trackFeed
         else:
-            logger.info("Track feed (%s) does not contain requested "
+            self.logger.info("Track feed (%s) does not contain requested "
                         "polarization %s; arbitrarily selecting another "
                         "feed that does", trackFeed, pol)
             dataFeed = feedsForPol[0]
@@ -90,7 +92,7 @@ class Calibrator(object):
                              "in the data table; has only {}"
                              .format(pol, list(pols)))
 
-        logger.debug("Selected feed %s for requested polarization %s",
+        self.logger.debug("Selected feed %s for requested polarization %s",
                      dataFeed, pol)
         return dataFeed
 
@@ -99,7 +101,7 @@ class Calibrator(object):
         calTable.add_column(Column(name='DATA',
                                    dtype=numpy.float64,
                                    shape=self.table['DATA'].shape[1]))
-        logger.debug("Initialized calTable:\n%s", calTable)
+        self.logger.debug("Initialized calTable:\n%s", calTable)
         return calTable
 
     def initFeedTable(self, calTable):
@@ -109,7 +111,7 @@ class Calibrator(object):
                                     dtype=numpy.float64,
                                     shape=calTable['DATA'].shape[1]))
 
-        logger.debug("Initialized feedTable:\n%s", feedTable)
+        self.logger.debug("Initialized feedTable:\n%s", feedTable)
         return feedTable
 
     def findCalFactors(self):
@@ -118,9 +120,9 @@ class Calibrator(object):
 
     def attenuate(self):
         # Populate FACTORS column with calibration factors (in place)
-        logger.info("STEP: attenuate")
+        self.logger.info("STEP: attenuate")
         self.findCalFactors()
-        logger.debug("Populated cal factors")
+        self.logger.debug("Populated cal factors")
 
         calTable = self.initCalTable()
         for row in self.table.getUnique(['FEED', 'POLARIZE']):
@@ -138,14 +140,14 @@ class Calibrator(object):
         return calTable
 
     def dontAttenuate(self):
-        logger.info("STEP: dontAttenuate")
+        self.logger.info("STEP: dontAttenuate")
         calOffTable = self.table.query(CAL=0)
         calTable = calOffTable['FEED', 'POLARIZE', 'FACTOR', 'DATA']
         return calTable
 
     def interPolCalibrate(self, feedTable, calTable):
-        logger.info("STEP: interPolCalibrate")
-        logger.debug("Performing inter-polarization calibration "
+        self.logger.info("STEP: interPolCalibrate")
+        self.logger.debug("Performing inter-polarization calibration "
                      "using calibrator %s",
                      self.interPolCalibrator.__class__.__name__)
         for row in feedTable:
@@ -154,16 +156,16 @@ class Calibrator(object):
             row['DATA'] = self.interPolCalibrator.calibrate(filteredCalTable)
 
     def dontInterPolCalibrate(self, feedTable, calTable, polarization):
-        logger.info("STEP: dontInterPolCalibrate")
+        self.logger.info("STEP: dontInterPolCalibrate")
         for row in feedTable:
             row['DATA'] = calTable.query(POLARIZE=polarization, FEED=row['FEED'])['DATA']
 
     def interBeamCalibrate(self, sigFeedData, refFeedData):
-        logger.info("STEP: interBeamCalibrate")
+        self.logger.info("STEP: interBeamCalibrate")
         return self.interBeamCalibrator.calibrate(sigFeedData, refFeedData)
 
     def dontInterBeamCalibrate(self, feedTable, polarization):
-        logger.debug("STEP: dontInterBeamCalibrate")
+        self.logger.debug("STEP: dontInterBeamCalibrate")
         feedMask = feedTable['FEED'] == self.getFeedForPol(polarization)
         feedData = feedTable[feedMask]['DATA'][0]
         return feedData
@@ -178,14 +180,14 @@ class Calibrator(object):
             # taking while the cal diode was on
             calTable = self.dontAttenuate()
 
-        logger.debug("calTable after attenuation/\"real data\" selection:\n%s",
-                     calTable)
+        self.logger.debug("calTable after attenuation/\"real data\" selection:\n%s",
+                          calTable)
 
         # So, we now have a calData table with a populated DATA column,
         # ready for the next stage
         # TODO: Don't init feedTable here; do same as calTable
         feedTable = self.initFeedTable(calTable)
-        logger.debug("Initialized feed table:\n%s", feedTable)
+        self.logger.debug("Initialized feed table:\n%s", feedTable)
         if self.interPolCalibrator:
             # If we have an inter-pol calibrator, then use it. This will
             # calibrate the data between the two polarizations in the
@@ -195,11 +197,11 @@ class Calibrator(object):
         else:
             self.dontInterPolCalibrate(feedTable, calTable, polarization)
 
-        logger.debug("Feed table after inter-pol calibration/pol selection:\n%s",
-                     feedTable)
+        self.logger.debug("Feed table after inter-pol calibration/pol selection:\n%s",
+                          feedTable)
 
         if self.interBeamCalibrator:
-            logger.debug("Performing inter-beam calibration using "
+            self.logger.debug("Performing inter-beam calibration using "
                          "calibrator %s",
                          self.interBeamCalibrator.__class__.__name__)
 
@@ -207,14 +209,16 @@ class Calibrator(object):
         else:
             data = self.dontInterBeamCalibrate(feedTable, polarization)
 
-        logger.debug("Feed table after inter-beam calibration/beam selection:\n%s",
-                     feedTable)
-        logger.debug("Final calibrated data: [%f ... %f]", data[0], data[-1])
+        self.logger.debug("Feed table after inter-beam calibration/beam selection:\n%s",
+                          feedTable)
+        self.logger.debug("Final calibrated data: [%f ... %f]", data[0], data[-1])
         return data
 
 
 class TraditionalCalibrator(Calibrator):
     def findCalFactors(self):
+        """Determine "factors" for data; use to populate FACTOR column"""
+        
         table = self.table
         receiver = table.meta['RECEIVER']
 
@@ -255,7 +259,7 @@ class TraditionalOofCalibrator(TraditionalCalibrator):
         super(TraditionalOofCalibrator, self).__init__(*args, **kwargs)
         # TODO: Kluge?
         self.attenuator = OofCalDiodeAttenuate()
-        self.interBeamCalibrator = OofCalibrate()
+        self.interBeamCalibrator = OofInterBeamCalibrate()
 
 
 class KaCalibrator(TraditionalCalibrator):
@@ -310,11 +314,11 @@ class KaCalibrator(TraditionalCalibrator):
         )
 
     def attenuate(self):
-        logger.info("STEP: attenuate")
+        self.logger.info("STEP: attenuate")
 
         # Populate FACTORS column with calibration factors (in place)
         self.findCalFactors()
-        logger.debug("Populated cal factors")
+        self.logger.debug("Populated cal factors")
 
         calTable = self.initCalTable()
 
@@ -352,7 +356,7 @@ class CalSeqCalibrator(Calibrator):
         gains = self.getGains()
         if gains is None:
             # We didn't find the gains, so we want to keep FACTOR values 1.0
-            logger.warning("Could not find gain values. Setting all gains to 1.0")
+            self.logger.warning("Could not find gain values. Setting all gains to 1.0")
             return
 
         # table['FACTOR']
