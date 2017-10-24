@@ -1,9 +1,11 @@
+"""Entry point to calibration pipeline"""
+
 import logging
 import os
 import numpy
 
 from gbtcal.rcvr_table import ReceiverTable
-from gbtcal.constants import CALOPTS, POLOPTS, ATTENTYPES, POLS
+from gbtcal.constants import CALOPTS, POLOPTS, POLS
 from gbtcal.decode import decode
 import gbtcal.attenuate
 import gbtcal.calibrator
@@ -32,46 +34,33 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, calibrator=None):
             raise ValueError("Invalid polMode '{}'; must be one of: {}"
                              .format(polMode, POLOPTS))
 
-    attenuator = None
-    interPolCal = None
-    interBeamCal = None
-
     # If the user has requested that we do any mode other than raw
     # it is assumed that we do attenuation
-    if calMode != CALOPTS.RAW:
-        attenuatorName = receiverRow['Attenuator'][0]
-
-        if not attenuatorName:
-            raise ValueError("Attenuator has not been defined for "
-                             "receiver {}".format(receiver))
-
-        attenuator = gbtcal.attenuate.get(attenuatorName)()
+    performAttenuation = bool(calMode != CALOPTS.RAW)
 
     # If the user has requested that we do polarization averaging,
     # we need to enable our interPolCal
-    if polMode == POLOPTS.AVG:
-        interPolCalName = receiverRow['InterPolCal'][0]
-        interPolCal = gbtcal.interbeamops.get(interPolCalName)()
+    performInterPolCal = bool(polMode == POLOPTS.AVG)
 
     # If the user has selected a mode that operates on two beams,
     # enable our interBeamCal
-    if calMode in [CALOPTS.DUALBEAM, CALOPTS.BEAMSWITCHEDTBONLY]:
-        interBeamCalName = receiverRow['InterBeamCal'][0]
-        interBeamCal = gbtcal.interbeamops.get(interBeamCalName)()
+    dualBeamCalOpts = [CALOPTS.DUALBEAM, CALOPTS.BEAMSWITCHEDTBONLY]
+    performInterBeamCal = bool(calMode in dualBeamCalOpts)
 
-    try:
-        calibratorStr = receiverRow['Cal Strategy'][0]
-    except IndexError:
-        raise ValueError("Receiver '{}' does not exist in the receiver table!"
-                         .format(receiver))
 
     # If a calibrator has been given, use it
     if calibrator:
         calibratorClass = calibrator
-    # Otherwise we fall back to default defined in the table
+    # Otherwise we fall back to the default defined in the table
     else:
+        # Get the calibrator as a string
         try:
-            # Get the calibrator class object from the calibrator module
+            calibratorStr = receiverRow['Cal Strategy'][0]
+        except IndexError:
+            raise ValueError("Receiver '{}' does not exist in the receiver table!"
+                             .format(receiver))
+        # Get the calibrator class object from the calibrator module
+        try:
             calibratorClass = getattr(gbtcal.calibrator, calibratorStr)
         except AttributeError:
             raise ValueError("Receiver {}'s indicated calibration "
@@ -86,9 +75,9 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, calibrator=None):
 
     calibrator = calibratorClass(
         dataTable,
-        attenuator,
-        interPolCal,
-        interBeamCal
+        performAttenuation,
+        performInterPolCal,
+        performInterBeamCal
     )
     calibrator.describe()
     return calibrator.calibrate(polOption)

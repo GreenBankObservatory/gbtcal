@@ -1,3 +1,5 @@
+"""High-level IF/DCR decoding functions"""
+
 import os
 
 from astropy.io import fits

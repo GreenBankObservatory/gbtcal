@@ -12,8 +12,9 @@ import numpy
 from constants import POLOPTS
 from gbtcal.decode import getFitsForScan, getTcal, getRcvrCalTable
 from table.querytable import QueryTable, copyTable
-from gbtcal.attenuate import OofCalDiodeAttenuate
-from gbtcal.interbeamops import OofInterBeamCalibrate
+from gbtcal.attenuate import CalDiodeAttenuate, CalSeqAttenuate, OofCalDiodeAttenuate
+from gbtcal.interpolops import InterPolAverage
+from gbtcal.interbeamops import BeamSubtractionDBA, OofInterBeamCalibrate
 from WBandCalibration import WBandCalibration
 from ArgusCalibration import ArgusCalibration
 
@@ -24,17 +25,17 @@ class Calibrator(object):
     executed if a class is provided to execute them"""
 
     def __init__(self, table,
-                 attenuator=None,
-                 interPolCalibrator=None,
-                 interBeamCalibrator=None):
+                 performAttenuation=False,
+                 performInterPolCal=False,
+                 performInterBeamCal=False):
         self.logger = logging.getLogger("{}.{}".format(__name__,
                                                        self.__class__.__name__))
         self.table = table.copy()
         self.projPath = table.meta['PROJPATH']
         self.scanNum = table.meta['SCAN']
-        self.attenuator = attenuator
-        self.interPolCalibrator = interPolCalibrator
-        self.interBeamCalibrator = interBeamCalibrator
+        self.performAttenuation = performAttenuation
+        self.performInterPolCal = performInterPolCal
+        self.performInterBeamCal = performInterBeamCal
 
         self.table.add_column(
             Column(name='FACTOR',
@@ -42,6 +43,19 @@ class Calibrator(object):
                    data=numpy.ones(len(self.table))
             )
         )
+
+        @property
+        def attenuator(self):
+            raise NotImplementedError("All Calibrator subclasses must define "
+                                      "an attenuator")
+        @property
+        def interPolCalibrator(self):
+            raise NotImplementedError("All Calibrator subclasses must define "
+                                      "an interPolCalibrator")
+        @property
+        def interBeamCalibrator(self):
+            raise NotImplementedError("All Calibrator subclasses must define "
+                                      "an interBeamCalibrator")
 
     def describe(self):
         """Describe the functionality of this Calibrator in its current configuration"""
@@ -171,7 +185,7 @@ class Calibrator(object):
         return feedData
 
     def calibrate(self, polarization):
-        if self.attenuator:
+        if self.performAttenuation:
             # If we have an attenuator, then use it. This will
             # attenuate the data and populate the calData DATA column
             calTable = self.attenuate()
@@ -188,7 +202,7 @@ class Calibrator(object):
         # TODO: Don't init feedTable here; do same as calTable
         feedTable = self.initFeedTable(calTable)
         self.logger.debug("Initialized feed table:\n%s", feedTable)
-        if self.interPolCalibrator:
+        if self.performInterPolCal:
             # If we have an inter-pol calibrator, then use it. This will
             # calibrate the data between the two polarizations in the
             # calTable and store the results by feed in feedTable
@@ -200,7 +214,7 @@ class Calibrator(object):
         self.logger.debug("Feed table after inter-pol calibration/pol selection:\n%s",
                           feedTable)
 
-        if self.interBeamCalibrator:
+        if self.performInterBeamCal:
             self.logger.debug("Performing inter-beam calibration using "
                          "calibrator %s",
                          self.interBeamCalibrator.__class__.__name__)
@@ -216,9 +230,13 @@ class Calibrator(object):
 
 
 class TraditionalCalibrator(Calibrator):
+    attenuator = CalDiodeAttenuate()
+    interPolCalibrator = InterPolAverage()
+    interBeamCalibrator = BeamSubtractionDBA()
+
     def findCalFactors(self):
         """Determine "factors" for data; use to populate FACTOR column"""
-        
+
         table = self.table
         receiver = table.meta['RECEIVER']
 
@@ -254,13 +272,8 @@ class TraditionalCalibrator(Calibrator):
 
 
 class TraditionalOofCalibrator(TraditionalCalibrator):
-    # TODO: Fix; lazy args
-    def __init__(self, *args, **kwargs):
-        super(TraditionalOofCalibrator, self).__init__(*args, **kwargs)
-        # TODO: Kluge?
-        self.attenuator = OofCalDiodeAttenuate()
-        self.interBeamCalibrator = OofInterBeamCalibrate()
-
+    attenuator = OofCalDiodeAttenuate()
+    interBeamCalibrator = OofInterBeamCalibrate()
 
 class KaCalibrator(TraditionalCalibrator):
     # Ka has two feeds and two polarizations, but only one polarization
@@ -350,6 +363,10 @@ class KaCalibrator(TraditionalCalibrator):
 
 
 class CalSeqCalibrator(Calibrator):
+    attenuator = CalSeqAttenuate()
+    interPolCalibrator = InterPolAverage()
+    interBeamCalibrator = BeamSubtractionDBA()
+
     def findCalFactors(self):
         table = self.table
         # This is defined in the subclasses
@@ -359,10 +376,8 @@ class CalSeqCalibrator(Calibrator):
             self.logger.warning("Could not find gain values. Setting all gains to 1.0")
             return
 
-        # table['FACTOR']
         for row in table:
             index = str(row['FEED']) + row['POLARIZE']
-            # print(index)
             row['FACTOR'] = gains[index]
 
     def getGains(self):
