@@ -28,10 +28,6 @@ class CALOPTS(Constant):
     BEAMSWITCH = 'BeamSwitch'
     BEAMSWITCHEDTBONLY = 'BeamSwitchedTBOnly'
 
-class ATTENTYPES(Constant):
-    GFM = 'GFM'
-    OOF = 'OOF'
-
 class POLS(Constant):
     X = 'X'
     Y = 'Y'
