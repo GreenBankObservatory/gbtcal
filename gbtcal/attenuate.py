@@ -57,9 +57,3 @@ class CalDiodeAttenuate(Attenuate):
 
     def attenuate(self, table):
         return self.getTotalPower(table)
-
-class OofCalDiodeAttenuate(CalDiodeAttenuate):
-    def getAntennaTemperature(self, calOnData, calOffData, tCal):
-        # NOTE: tCal is note used here! It will be used later on
-        count = (calOnData - calOffData).mean()
-        return 0.5 *  (calOnData + calOffData) / count
