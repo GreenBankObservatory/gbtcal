@@ -36,7 +36,7 @@ class InterBeamCalibrate(object):
         raise NotImplementedError("All InterBeamCalibrate subclasses "
                                   "must implement calibrate()")
 
-class OofCalibrate(InterBeamCalibrate):
+class OofInterBeamCalibrate(InterBeamCalibrate):
     def calibrate(self, rawTable, feedTable):
         sigFeed, refFeed  = self.getSigRefFeeds(rawTable)
         sigFeedTcal = rawTable.query(FEED=sigFeed)['FACTOR'][0]

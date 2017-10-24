@@ -3,7 +3,7 @@ import os
 import numpy
 
 from gbtcal.rcvr_table import ReceiverTable
-from gbtcal.constants import CALOPTS, POLOPTS, ATTENTYPES
+from gbtcal.constants import CALOPTS, POLOPTS, ATTENTYPES, POLS
 from gbtcal.decode import decode
 import gbtcal.attenuate
 import gbtcal.calibrator
@@ -22,26 +22,23 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
     if polMode == POLOPTS.AVG:
         polOption = polMode
     else:
-        # we may get 'XL', but we need to pass either 'X' or 'L'
         polarizations = numpy.unique(dataTable['POLARIZE'])
-        polset = set(polarizations)
-        # TODO: Dumb
-        if polset.issuperset(["X"]) or polset.issuperset(["Y"]):
+        # This converts from XL/YR to X/L/Y/R
+        if POLS.X in polarizations or POLS.Y in polarizations:
             polOption = polMode[0]
-        elif polset.issuperset(["L"]) or polset.issuperset(["R"]):
+        elif POLS.L in polarizations or POLS.R in polarizations:
             polOption = polMode[1]
         else:
-            raise ValueError(":(")
-
+            raise ValueError("Invalid polMode '{}'; must be one of: {}"
+                             .format(polMode, POLOPTS))
 
     attenuator = None
     interPolCal = None
     interBeamCal = None
 
+    # If the user has requested that we do any mode other than raw
+    # it is assumed that we do attenuation
     if calMode != CALOPTS.RAW:
-        # If the user has requested that we do any mode other than raw
-        # it is assumed that we do attenuation
-
         attenuatorName = receiverRow['Attenuator'][0]
 
         if not attenuatorName:
@@ -50,17 +47,16 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
 
         attenuator = gbtcal.attenuate.get(attenuatorName)()
 
+    # If the user has requested that we do polarization averaging,
+    # we need to enable our interPolCal
     if polMode == POLOPTS.AVG:
-        # If the user has requested that we do polarization averaging,
-        # we need to enable our interPolCal
         interPolCalName = receiverRow['InterPolCal'][0]
         interPolCal = gbtcal.interbeamops.get(interPolCalName)()
 
+    # If the user has selected a mode that operates on two beams,
+    # enable our interBeamCal
     if calMode in [CALOPTS.DUALBEAM, CALOPTS.BEAMSWITCHEDTBONLY]:
-        # If the user has selected a mode that operates on two beams,
-        # enable our interBeamCal
         interBeamCalName = receiverRow['InterBeamCal'][0]
-        # interBeamCalName = 'OofCalibrate'
         interBeamCal = gbtcal.interbeamops.get(interBeamCalName)()
 
     try:
@@ -76,6 +72,7 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
         raise ValueError("Receiver '{}' does not exist in the receiver table!"
                          .format(receiver))
 
+    # Get the calibrator class object from the calibrator module
     try:
         calibratorClass = getattr(gbtcal.calibrator, calibratorStr)
     except AttributeError:
@@ -89,7 +86,6 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
                  calibratorClass.__name__)
 
 
-    # polarization = polOption if polOption != POLOPTS.AVG else None
     calibrator = calibratorClass(
         dataTable,
         attenuator,
@@ -102,12 +98,12 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, attenType):
 
 def validateOptions(rcvrRow, calMode, polMode):
     rcvrName = rcvrRow['M&C Name'][0]
-    # calOptions = rcvrRow['Cal Options'][0]
+    calOptions = rcvrRow['Cal Options'][0]
     polOptions = rcvrRow['Pol Options'][0]
-    # if calMode not in calOptions:
-    #     raise ValueError("calMode '{}' is invalid for receiver {}. "
-    #                      "Must be one of {}"
-    #                      .format(calMode, rcvrName, calOptions))
+    if calMode not in calOptions:
+        raise ValueError("calMode '{}' is invalid for receiver {}. "
+                         "Must be one of {}"
+                         .format(calMode, rcvrName, calOptions))
     if polMode not in polOptions:
         raise ValueError("polMode '{}' is invalid for receiver {}. "
                          "Must be one of {}"
