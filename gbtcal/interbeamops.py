@@ -36,22 +36,6 @@ class InterBeamCalibrate(object):
         raise NotImplementedError("All InterBeamCalibrate subclasses "
                                   "must implement calibrate()")
 
-class OofInterBeamCalibrate(InterBeamCalibrate):
-    def calibrate(self, rawTable, feedTable):
-        sigFeed, refFeed  = self.getSigRefFeeds(rawTable)
-        sigFeedTcal = rawTable.query(FEED=sigFeed)['FACTOR'][0]
-        refFeedTcal = rawTable.query(FEED=refFeed)['FACTOR'][0]
-
-        tcalQuot = refFeedTcal / sigFeedTcal
-
-        sigFeedCalData = feedTable.query(FEED=sigFeed)['DATA'][0]
-        refFeedCalData = feedTable.query(FEED=refFeed)['DATA'][0]
-
-        # OOF gets this backwards, so so will us
-        # TODO: We are not really sure why this arrangement works, but it does
-        return (refFeedCalData * tcalQuot) - sigFeedCalData
-
-
 class BeamSubtractionDBA(InterBeamCalibrate):
     def calibrate(self, rawTable, feedTable):
         """Here we're just finding the difference between the two beams"""

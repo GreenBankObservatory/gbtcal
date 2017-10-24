@@ -12,9 +12,9 @@ import numpy
 from constants import POLOPTS
 from gbtcal.decode import getFitsForScan, getTcal, getRcvrCalTable
 from table.querytable import QueryTable, copyTable
-from gbtcal.attenuate import CalDiodeAttenuate, CalSeqAttenuate, OofCalDiodeAttenuate
+from gbtcal.attenuate import CalDiodeAttenuate, CalSeqAttenuate
 from gbtcal.interpolops import InterPolAverage
-from gbtcal.interbeamops import BeamSubtractionDBA, OofInterBeamCalibrate
+from gbtcal.interbeamops import BeamSubtractionDBA
 from WBandCalibration import WBandCalibration
 from ArgusCalibration import ArgusCalibration
 
@@ -270,10 +270,6 @@ class TraditionalCalibrator(Calibrator):
                            highCal, centerSkyFreq, bandwidth)
             table['FACTOR'][mask] = tCal
 
-
-class TraditionalOofCalibrator(TraditionalCalibrator):
-    attenuator = OofCalDiodeAttenuate()
-    interBeamCalibrator = OofInterBeamCalibrate()
 
 class KaCalibrator(TraditionalCalibrator):
     # Ka has two feeds and two polarizations, but only one polarization

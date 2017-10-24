@@ -144,23 +144,3 @@ class TestCalibrate(unittest.TestCase):
             ]
 
         )
-
-    def testRcvr40_52OOF(self):
-
-        testDataProjName = "TPTCSOOF_091031"
-        projPath = "{}/data/{}".format(SCRIPTPATH,
-                                       testDataProjName)
-        scanNum = 45
-
-        actual = calibrate(projPath,
-                           scanNum,
-                           calMode='DualBeam',
-                           polMode='XL',
-                           rcvrTablePath=rcvrTablePath,
-                           calibrator=TraditionalOofCalibrator)
-
-        # call it's oof calibration
-        # TODO: I get different results for YR and Avg, but I have
-        # nothing to test against
-        self.assertAlmostEqual(actual[0], -2.43800002314, 6)
-        self.assertAlmostEqual(actual[-1], -2.25389923142, 6)
