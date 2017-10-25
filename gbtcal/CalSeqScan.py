@@ -20,15 +20,17 @@
 #     P. O. Box 2
 #     Green Bank, WV 24944-0002 USA
 
+import logging
 
 import numpy
 from ConfigParser import ConfigParser
 
 from Rcvr68_92 import Rcvr68_92
-from gbtcal.decode import getFitsForScan
-from gbtcal.decode import getDcrDataDescriptors
-
+from gbtcal.decode import getFitsForScan, getDcrDataDescriptors
 from gbtcal.dcrtable import DcrTable
+
+
+logger = logging.getLogger(__name__)
 
 
 class Backend:
@@ -83,7 +85,7 @@ class CalSeqScan:
 
         self.fitsMap = getFitsForScan(projectPath, scanNum)
 
-        print("fits files", self.fitsMap.keys())
+        logger.debug("fits files %s", self.fitsMap.keys())
         self.channels = []
         self.ports = []  # need ordered list to correspond with data columns
         self.SetBackend()
@@ -133,8 +135,11 @@ class CalSeqScan:
         cp.read(filename)
         try:
             return float(cp.get("all_modes", "tcold"))
-        except Exception:
-            return 50.0  # default
+        except Exception as e:
+            default = 50.0
+            logger.warning("Caught exception %s", e)
+            logger.warning("Returning default value %s", default)
+            return default
 
     def getCalPos(self):
         return self.receiver.getCalpos()
@@ -158,7 +163,7 @@ class CalSeqScan:
             with calibration wheel position metadata """
 
         if self.getBackendName() == "DCR":
-            print "processCalseqScan for DCR"
+            logger.debug("processCalseqScan for DCR")
             # Get DCR FITS DATA 'TIMETAG' column
             # (we only need this for auto mode,
             # but don't want to repeat this in loop)
@@ -166,7 +171,7 @@ class CalSeqScan:
 
             for channel in self.backend.channels:
                 for phase in self.backend.GetPhases():
-                    print "channel, phase: ", channel, phase
+                    logger.debug("channel, phase: %s, %s", channel, phase)
                     self.channels.append(channel)
                     feed = int(channel[0])
                     pol = channel[1]
@@ -283,5 +288,5 @@ if __name__ == "__main__":
     projPath = "/home/gbtdata/AGBT16B_288_03"
     scanNum = 1
     scan = CalSeqScan(projPath, scanNum)
-    print("scan: ", scan)
+    logger.debug("scan: %s", scan)
     scan.processCalseqScan()

@@ -85,10 +85,13 @@ class Calibrator(object):
         trackFeed = self.table.meta['TRCKBEAM']
         # First, find all of the feeds that contain the requested
         # polarization
-        # TODO: This is terrible; revert soon!
+        # TODO: This is not the correct location for this decision to be made!
+        logger.debug("%s polarization has been requested")
         if pol == POLOPTS.AVG:
+            logger.debug("Will process all feeds")
             feedsForPol = self.table.getUnique('FEED')
         else:
+            logger.debug("Will process only feeds containing %s", pol)
             feedsForPol = self.table.query(POLARIZE=pol).getUnique('FEED')
 
         if trackFeed in feedsForPol:

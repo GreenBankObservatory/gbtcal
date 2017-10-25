@@ -1,8 +1,13 @@
+import logging
 import os
+
 import numpy
 from astropy.io import fits
 
+
 TEMP_OFFSET = 273.15
+
+logger = logging.getLogger(__name__)
 
 
 class ArgusCalibration:
@@ -14,7 +19,7 @@ class ArgusCalibration:
     """
     def __init__(self, path, vane, sky):
         self.projpath = path
-        print "Argus Cal: vane scan = {}f, sky scan = {}".format(vane, sky)
+        logger.debug("Argus Cal: vane scan = %sf, sky scan = %s", vane, sky)
         self.vanefile = vane
         self.skyfile = sky
 

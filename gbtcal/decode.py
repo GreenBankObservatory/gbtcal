@@ -1,5 +1,6 @@
 """High-level IF/DCR decoding functions"""
 
+import logging
 import os
 
 from astropy.io import fits
@@ -9,6 +10,9 @@ import numpy
 
 from gbtcal.dcrtable import DcrTable
 from table.stripped_table import StrippedTable
+
+
+logger = logging.getLogger(__name__)
 
 
 # All valid receivers that use DCR data
@@ -51,10 +55,9 @@ def getFitsForScan(projPath, scanNum):
                 try:
                     managerFitsMap[manager] = fits.open(fitsPath)
                 except IOError:
-                    # TODO: logger
-                    print("{} is listed in ScanLog.fits as having data for "
-                          "scan {}, but no such data exists in {}! Skipping."
-                          .format(manager, scanName, fitsPath))
+                    logger.warning("%s is listed in ScanLog.fits as having "
+                                   "data for scan %s, but no such data exists "
+                                   "in %s! Skipping.", manager, scanName, fitsPath)
 
     return managerFitsMap
 

@@ -1,4 +1,9 @@
+import logging
+
 import numpy
+
+
+logger = logging.getLogger(__name__)
 
 class InterPolCalibrate(object):
     def calibrate(self, data):
@@ -12,4 +17,6 @@ class InterPolAverage(InterPolCalibrate):
                              "polarizations to be given; got {}"
                              .format(len(data)))
 
-        return numpy.mean(data['DATA'], axis=0)
+        mean = numpy.mean(data['DATA'], axis=0)
+        logger.debug("Averaged polarizations: %s", mean)
+        return mean
