@@ -20,12 +20,16 @@
 #     P. O. Box 2
 #     Green Bank, WV 24944-0002 USA
 
+import logging
 import os
+
+from astropy.io import fits
 import numpy
 
 from CalSeqScan import CalSeqScan
-# from   gbt.ygor import getConfigValue
-from astropy.io import fits
+
+
+logger = logging.getLogger(__name__)
 
 
 class WBandCalibration:
@@ -98,11 +102,11 @@ class WBandCalibration:
         self.backend = self.scans[thisScannum].getBackendName()
         haveAllScans = self.makeCalObservation(projPath, procsize)
         if haveAllScans:
-            print "haveAllScans!"
+            logger.debug("haveAllScans!")
             self.calcGainTsys()
             self.saveData(projectName, self.backend, self.gain, self.Tsys)
         else:
-            print "Incomplete calibration sequence"
+            logger.debug("Incomplete calibration sequence")
 
     def makeCalObservation(self, project, procsize):
         """
@@ -165,7 +169,7 @@ class WBandCalibration:
         calSeqData = {}
 
         for scannum in self.scans.iterkeys():
-            print "getCAlSeqData for scannum", scannum
+            logger.debug("getCAlSeqData for scannum: %s", scannum)
 
             calSeqScan = self.scans[scannum]
 
@@ -216,7 +220,8 @@ class WBandCalibration:
                 vcold = numpy.median(channelData['Vcold'])
                 gain_array = (twarm - tcold) / (vwarm - vcold)
             except KeyError:
-                print "Missing Vwarm or Vcold data for channel", channel, ": setting gain to 1.0"
+                logger.warning("Missing Vwarm or Vcold data for channel %s: "
+                               "setting gain to 1.0", channel)
                 gain_array = 1.0
             self.gain_data[channel] = gain_array
             self.gain[channel] = numpy.median(gain_array)
@@ -229,7 +234,9 @@ class WBandCalibration:
                     self.Tsys[tsys_key] = numpy.median(Tsys_array)
                 except KeyError:
                     if sky == "Observing":
-                        print "Missing Observing (Sky) data for channel", channel, ": cannot calculate Tsys"
+                        logger.warning("Missing Observing (Sky) data for "
+                                       "channel %s: cannot calculate Tsys",
+                                       channel)
                     pass
         self.calibrated = True
 

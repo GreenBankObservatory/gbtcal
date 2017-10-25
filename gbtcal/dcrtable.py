@@ -69,16 +69,19 @@ class DcrTable(StrippedTable):
             raise ValueError("Must have at least two feeds to determine "
                              "the tracking/reference feeds")
         if len(feeds) > 2:
-            # TODO: logger
-            print("More than two feeds provided; selecting second feed as "
-                  "reference feed!")
+            logger.warning("More than two feeds provided; selecting second feed as "
+                           "reference feed!")
 
         if trackBeam == feeds[0]:
+            logger.debug("Track beam is the first feed")
             sig = feeds[0]
             ref = feeds[1]
         else:
+            logger.debug("Track beam is NOT the first feed")
             sig = feeds[1]
             ref = feeds[0]
+
+        logger.debug("Got sig: %s; ref: %s", sig, ref)
 
         return sig, ref
 
@@ -215,7 +218,7 @@ class DcrTable(StrippedTable):
         # NOT specified by the IF FITS file, wo we'll do the same
         #assert len(uniquePorts) == dcrDataTable['DATA'].shape[1]
         if len(uniquePorts) != dcrDataTable['DATA'].shape[1]:
-            print("WARNING: IF ports are only a subset of DCR ports used")
+            logger.warning("IF ports are only a subset of DCR ports used")
         # TODO: I wonder if there is a way to avoid looping here altogether?
         for portIndex, port in enumerate([port + 1 for port in uniquePorts]):
             # TODO: Combine these into one?

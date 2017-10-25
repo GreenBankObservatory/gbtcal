@@ -12,8 +12,6 @@ from gbtcal.attenuate import CalDiodeAttenuate
 from gbtcal.rcvr_table import ReceiverTable
 from gbtcal.constants import POLOPTS, CALOPTS
 
-from gbtcal.calibrator import TraditionalOofCalibrator
-
 logger = logging.getLogger(__name__)
 
 SCRIPTPATH = os.path.dirname(os.path.abspath(__file__))

@@ -110,11 +110,11 @@ def calibrate(projPath, scanNum, calMode, polMode, rcvrTablePath=None, calibrato
 def calibrateToFile(projPath, scanNum, calMode, polMode):
 
     data = calibrate(projPath, scanNum, calMode, polMode)
-    print("data: ", data)
+    logger.debug("data: %s", data)
     projName = projPath.split('/')[-1]
     fn = "{}.{}.{}.{}.decode".format(projName, scanNum, calMode, polMode)
     fnp = os.path.join("/tmp", fn)
-    print("data file: ", fnp)
+    logger.debug("data file: %s", fnp)
     with open(fnp, 'w') as f:
         f.write(str(list(data[0])))
 
@@ -141,8 +141,8 @@ if __name__ == "__main__":
     # # TBF: derive from receivers table
     # calModes = ["Raw", "TotalPower", "DualBeam"]
     # polModes = ["XL", "YR", "Avg"]
-    # print("Calibrating scan {}, proj {}".format(scanNum, projPath))
+    # logger.debug("Calibrating scan {}, proj {}".format(scanNum, projPath))
     # for cal in calModes:
     #     for pol in polModes:
-    #         print("Calibrating for {}, {}".format(cal, pol))
+    #         logger.debug("Calibrating for {}, {}".format(cal, pol))
     #         data = calibrate(projPath, scanNum, cal, pol)

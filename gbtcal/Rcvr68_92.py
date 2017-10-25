@@ -20,9 +20,13 @@
 #       P. O. Box 2
 #       Green Bank, WV 24944-0002 USA
 
-# import pyfits
+import logging
 import traceback
+
 from astropy.io import fits
+
+
+logger = logging.getLogger(__name__)
 
 
 class Rcvr68_92:
@@ -86,7 +90,7 @@ class Rcvr68_92:
             if 'fitsver' in keys:
                 self.fitsver = pHeader['fitsver']
             elif self.debug:
-                print "DEBUG: FITSVER keyword missing"
+                logger.debug("FITSVER keyword missing")
 
             # if pHeader.has_key('calseq'):
             if 'calseq' in keys:
@@ -98,9 +102,9 @@ class Rcvr68_92:
                 else:
                     self.calSeq = 'Unknown'
                     if self.debug:
-                        print "DEBUG: unexpected CALSEQ value: %d" % calSeqKW
+                        logger.debug("unexpected CALSEQ value: %d", calSeqKW)
             elif self.debug:
-                print "DEBUG: missing CALSEQ keyword"
+                logger.debug("missing CALSEQ keyword")
 
             # if pHeader.has_key('calpos'):
             if 'calpos' in keys:
@@ -108,23 +112,23 @@ class Rcvr68_92:
                 if type(calPosKW) is not str:
                     self.calPos = self.getCalPosString(calPosKW)
                     if self.debug:
-                        print "DEBUG: CALPOS KW is integer"
+                        logger.debug("CALPOS KW is integer")
                 else:
                     self.calPos = calPosKW
             elif self.debug:
-                print "DEBUG: missing CALPOS keyword"
+                logger.debug("missing CALPOS keyword")
 
             # if pHeader.has_key('tcold'):
             if 'tcold' in keys:
                 self.tcold = pHeader['tcold']
             elif self.debug:
-                print "DEBUG : mising TCOLD keyword"
+               logger.debug("missing TCOLD keyword")
 
             # if pHeader.has_key('twarm'):
             if 'twarm' in keys:
                 self.twarm = pHeader['twarm']
             elif self.debug:
-                print "DEBUG : mising TCOLD keyword"
+               logger.debug("missing TWARM keyword")
 
             # binary table
             if len(self.fitsData) > 1:
@@ -137,11 +141,11 @@ class Rcvr68_92:
                     if 'timestamp' in colNames:
                         self.dmjds = tabData.field('timestamp')
                         if self.debug:
-                            print "DEBUG: TimeStamp column used"
+                            logger.debug("TimeStamp column used")
                     elif 'dmjd' in colNames:
                         self.dmjds = tabData.field('dmjd')
                     elif self.debug:
-                        print "DEBUG: missing a time column of either type"
+                        logger.debug("missing a time column of either type")
 
                     if len(self.dmjds) > 0:
                         if 'motion' in colNames:
@@ -151,7 +155,7 @@ class Rcvr68_92:
                             for i in range(self.dmjds):
                                 self.moving.append(False)
                             if self.debug:
-                                print "DEBUG: missing MOTION column"
+                                logger.debug("missing MOTION column")
 
                         if 'position' in colNames:
                             positionCol = tabData.field('position')
@@ -161,7 +165,7 @@ class Rcvr68_92:
                             for i in range(self.dmjds):
                                 positionCol.append(self.calPos)
                             if self.debug:
-                                print "DEBUG: missing POSITION column"
+                                logger.debug("missing POSITION column")
 
                         if 'tcold' in colNames:
                             self.tcoldCol = tabData.field('tcold')
@@ -170,7 +174,7 @@ class Rcvr68_92:
                             for i in range(self.dmjds):
                                 self.tcoldCol.append(self.tcold)
                             if self.debug:
-                                print "DEBUG: missing TCOLD column"
+                                logger.debug("missing TCOLD column")
 
                         if 'twarm' in colNames:
                             self.twarmCol = tabData.field('twarm')
@@ -179,7 +183,7 @@ class Rcvr68_92:
                             for i in range(self.dmjds):
                                 self.twarmCol.append(self.twarm)
                             if self.debug:
-                                print "DEBUG: missing TWARM column"
+                                logger.debug("missing TWARM column")
 
                         if 'endofscan' in colNames:
                             self.scanFinished = tabData.field(
@@ -188,23 +192,23 @@ class Rcvr68_92:
                             # need to assume it's finished
                             self.scanFinished = True
                             if self.debug:
-                                print "DEBUG: missing EndOfScan column"
+                                logger.debug("missing EndOfScan column")
 
                         self.hasTable = True
                     elif self.debug:
                         # otherwise there is no time column
                         # ignore anything that might be in this table
-                        print "DEBUG: empty table."
+                        logger.debug("empty table.")
                 else:
                     # it might have not yet been written
                     self.scanFinished = False
                     if self.debug:
-                        print "DEBUG: problem with data field of hdu[1]"
+                        logger.debug("problem with data field of hdu[1]")
             else:
                 # it might have not yet been written
                 self.scanFinished = False
                 if self.debug:
-                    print "DEBUG: missing table."
+                    logger.debug("missing table.")
 
             self.fitsData.close()
 
@@ -219,25 +223,25 @@ class Rcvr68_92:
                         self.positions.append(
                             self.getCalPosString(positionCol[i]))
                     if self.debug:
-                        print "DEBUG: POSITION column translated to string values"
+                        logger.debug("POSITION column translated to string values")
             else:
                 self.positions = []
 
             if self.debug:
                 if not self.isAuto() and self.calPos not in self.calPosTypes and self.calPos != "Unknown":
-                    print "DEBUG: unrecognized CALPOS keyword value %s " % self.calPos
+                    logger.warning("unrecognized CALPOS keyword value %s", self.calPos)
 
                 for thisPos in self.positions:
                     if thisPos not in self.calPosTypes and thisPos != "Unknown":
-                        print "DEBUG: unrecognized POSITION column value %s" % thisPos
+                        logger.warning("unrecognized POSITION column value %s", thisPos)
         except Exception:
             # nothing to do except move on
             self.scanFinished = True
             if self.debug:
-                print "DEBUG: unexpected exception parsing Rcvr68_92 FITS file"
+                logger.warning("unexpected exception parsing Rcvr68_92 FITS file")
                 traceback.print_exc()
 
-        print("finished readInfo")
+        logger.debug("finished readInfo")
 
     def getCalPosString(self, calPosInt):
         result = "Unknown"
@@ -306,7 +310,7 @@ class Rcvr68_92:
                 elif linearPol == -8:
                     result = -3
                 else:
-                    print "Rcvr68_92: Unrecognized polarization code %s" % linearPol
+                    logger.warning("Rcvr68_92: Unrecognized polarization code %s", linearPol)
 
         return result
 
@@ -427,6 +431,6 @@ class Rcvr68_92:
 if __name__ == "__main__":
     fn = "/home/gbtdata/AGBT16B_288_03/Rcvr68_92/2017_02_27_08:59:51.fits"
     w = Rcvr68_92(fn, debug=True)
-    print(w)
-    print(w.dmjds)
-    print(w.twarmCol)
+    logger.debug(w)
+    logger.debug(w.dmjds)
+    logger.debug(w.twarmCol)

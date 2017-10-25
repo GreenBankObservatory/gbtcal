@@ -1,24 +1,19 @@
-import sys
+import logging
 
 import numpy
 
-# TODO: DRY
-def get(name):
-    current_module = sys.modules[__name__]
-    try:
-        return getattr(current_module, name)
-    except AttributeError:
-        raise AttributeError("Requested {} member {} does not exist!"
-                             .format(current_module.__name__, name))
+
+logger = logging.getLogger(__name__)
+
 
 class Attenuate(object):
     def attenuate(self, table):
-        pass
+        raise NotImplementedError("attenuate() must be defined for all "
+                                  "Attenuate subclasses!")
 
 class CalSeqAttenuate(Attenuate):
     def getTotalPower(self, table):
         """Total power for External Cals is just the off with a gain."""
-        # offTable = table.query(FEED=feed, POLARIZE=pol, CENTER_SKY=freq)
         offTable = table
 
         if len(offTable) != 1:
@@ -42,6 +37,7 @@ class CalDiodeAttenuate(Attenuate):
         countsPerKelvin = (numpy.sum((calOnData - calOffData) / tCal) /
                            len(calOnData))
         Ta = 0.5 * (calOnData + calOffData) / countsPerKelvin - 0.5 * tCal
+        logger.debug("Got antenna temperatures: %s", Ta)
         return Ta
 
     def getTotalPower(self, table):
