@@ -63,19 +63,19 @@ class Calibrator(object):
         self.logger.info("I will be calibrating this data:\n%s",
                     self.table)
 
-        if self.attenuator:
+        if self.performAttenuation:
             self.logger.info("I will perform attenuation using: %s",
                         self.attenuator.__class__.__name__)
         else:
             self.logger.info("I will perform NO attenuation")
 
-        if self.interPolCalibrator:
+        if self.performInterPolCal:
             self.logger.info("I will perform inter-pol calibration using: %s",
                         self.interPolCalibrator.__class__.__name__)
         else:
             self.logger.info("I will perform NO inter-pol calibration")
 
-        if self.interBeamCalibrator:
+        if self.performInterBeamCal:
             self.logger.info("I will perform inter-beam calibration using: %s",
                         self.interBeamCalibrator.__class__.__name__)
         else:
@@ -114,37 +114,46 @@ class Calibrator(object):
         return dataFeed
 
     def initCalTable(self):
+        # Create the blank cal table by using self.table as a template
+        # and keeping only these three columns
         calTable = copyTable(self.table, ['FEED', 'POLARIZE', 'FACTOR'])
+        # Then add the data column, but don't populate it yet
         calTable.add_column(Column(name='DATA',
                                    dtype=numpy.float64,
                                    shape=self.table['DATA'].shape[1]))
-        self.logger.debug("Initialized calTable:\n%s", calTable)
+        # Set the sig and ref feeds so they can be extracted later
+        sigFeed, refFeed = self.table.getSigAndRefFeeds()
+        calTable.meta['SIGFEED'] = sigFeed
+        calTable.meta['REFFEED'] = refFeed
+
+        self.logger.info("Initialized calTable:\n%s", calTable)
         return calTable
 
-    def initFeedTable(self, calTable):
-        feedTable = QueryTable([numpy.unique(calTable['FEED'])])
-        feedTable.add_column(Column(name='DATA',
-                                    length=len(feedTable),
+    def initPolTable(self, calTable):
+        # Create new table with rows for each unique polarization in the
+        # calTable
+        polTable = QueryTable([calTable.getUnique('POLARIZE')])
+        # Then add the data column, but don't populate it yet
+        polTable.add_column(Column(name='DATA',
+                                    length=len(polTable),
                                     dtype=numpy.float64,
                                     shape=calTable['DATA'].shape[1]))
 
-        self.logger.debug("Initialized feedTable:\n%s", feedTable)
-        return feedTable
+        self.logger.info("Initialized polTable:\n%s", polTable)
+        return polTable
 
     def findCalFactors(self):
         raise NotImplementedError("findCalFactors() must be implemented for "
                                   "all Calibrator subclasses!")
 
     def attenuate(self):
-        # Populate FACTORS column with calibration factors (in place)
         self.logger.info("STEP: attenuate")
+        # Populate FACTORS column with calibration factors (in place)
         self.findCalFactors()
         self.logger.debug("Populated cal factors")
 
         calTable = self.initCalTable()
-        for row in self.table.getUnique(['FEED', 'POLARIZE']):
-            feed = row['FEED']
-            pol = row['POLARIZE']
+        for feed, pol in self.table.getUnique(['FEED', 'POLARIZE']):
             dataToAttenuate = self.table.query(FEED=feed, POLARIZE=pol)
             factor = dataToAttenuate['FACTOR'][0]
             power = self.attenuator.attenuate(dataToAttenuate)
@@ -156,36 +165,50 @@ class Calibrator(object):
             })
         return calTable
 
-    def dontAttenuate(self):
-        self.logger.info("STEP: dontAttenuate")
+    def selectNonCalData(self):
+        self.logger.info("STEP: selectNonCalData")
         calOffTable = self.table.query(CAL=0)
-        calTable = calOffTable['FEED', 'POLARIZE', 'FACTOR', 'DATA']
+        calTable = self.initCalTable()
+        for feed, pol in self.table.getUnique(['FEED', 'POLARIZE']):
+            calTable.add_row({
+                'FEED': feed,
+                'POLARIZE': pol,
+                'FACTOR': 1.0,  # We didn't attenuate, so set factor to 1
+                'DATA': calOffTable.query(FEED=feed, POLARIZE=pol)['DATA'][0]
+             })
+
         return calTable
 
-    def interPolCalibrate(self, feedTable, calTable):
+    def interPolCalibrate(self, polTable):
         self.logger.info("STEP: interPolCalibrate")
-        self.logger.debug("Performing inter-polarization calibration "
-                     "using calibrator %s",
-                     self.interPolCalibrator.__class__.__name__)
-        for row in feedTable:
-            feedMask = calTable['FEED'] == row['FEED']
-            filteredCalTable = calTable[feedMask]
-            row['DATA'] = self.interPolCalibrator.calibrate(filteredCalTable)
+        return self.interPolCalibrator.calibrate(polTable)
 
-    def dontInterPolCalibrate(self, feedTable, calTable, polarization):
-        self.logger.info("STEP: dontInterPolCalibrate")
-        for row in feedTable:
-            row['DATA'] = calTable.query(POLARIZE=polarization, FEED=row['FEED'])['DATA']
+    def selectPol(self, polTable, polarization):
+        self.logger.info("STEP: selectPol")
+        return polTable.query(POLARIZE=polarization)['DATA'][0]
 
-    def interBeamCalibrate(self, sigFeedData, refFeedData, polarization):
+    def interBeamCalibrate(self, calTable):
         self.logger.info("STEP: interBeamCalibrate")
-        return self.interBeamCalibrator.calibrate(sigFeedData, refFeedData, polarization)
+        polTable = self.initPolTable(calTable)
+        for row in polTable:
+            polMask = calTable['POLARIZE'] == row['POLARIZE']
+            calTableForPol = calTable[polMask]
+            row['DATA'] = self.interBeamCalibrator.calibrate(calTableForPol)
 
-    def dontInterBeamCalibrate(self, feedTable, polarization):
-        self.logger.debug("STEP: dontInterBeamCalibrate")
-        feedMask = feedTable['FEED'] == self.getFeedForPol(polarization)
-        feedData = feedTable[feedMask]['DATA'][0]
-        return feedData
+        return polTable
+
+    def selectBeam(self, calTable, feed):
+
+        logger.info("Creating polTable from sig feed %d in calTable", feed)
+        polTable = self.initPolTable(calTable)
+        filteredCalTable = calTable.query(FEED=feed)
+        for row in polTable:
+            # Get the data from the row of the filtered calTable with the current
+            # row's polarization
+            polMask = filteredCalTable['POLARIZE'] == row['POLARIZE']
+            row['DATA'] = filteredCalTable[polMask]['DATA'][0]
+
+        return polTable
 
     def calibrate(self, polarization):
         if self.performAttenuation:
@@ -195,40 +218,33 @@ class Calibrator(object):
         else:
             # If not, we just remove all of our rows that have data
             # taking while the cal diode was on
-            calTable = self.dontAttenuate()
+            calTable = self.selectNonCalData()
 
-        self.logger.debug("calTable after attenuation/\"real data\" selection:\n%s",
+        self.logger.info("calTable after attenuation/\"real data\" selection:\n%s",
                           calTable)
+        if self.performInterBeamCal:
+            self.logger.info("Performing inter-beam calibration using "
+                             "calibrator %s",
+                             self.interBeamCalibrator.__class__.__name__)
+            polTable = self.interBeamCalibrate(calTable)
+        else:
+            polTable = self.selectBeam(calTable, calTable.meta['SIGFEED'])
+
+        self.logger.info("pol table after inter-beam calibration/beam selection:\n%s",
+                          polTable)
 
         # So, we now have a calData table with a populated DATA column,
         # ready for the next stage
-        # TODO: Don't init feedTable here; do same as calTable
-        feedTable = self.initFeedTable(calTable)
-        self.logger.debug("Initialized feed table:\n%s", feedTable)
         if self.performInterPolCal:
             # If we have an inter-pol calibrator, then use it. This will
             # calibrate the data between the two polarizations in the
-            # calTable and store the results by feed in feedTable
-            self.interPolCalibrate(feedTable, calTable)
+            # calTable and store the results by feed in polTable
+            data = self.interPolCalibrate(polTable)
 
         else:
-            self.dontInterPolCalibrate(feedTable, calTable, polarization)
+            data = self.selectPol(polTable, polarization)
 
-        self.logger.debug("Feed table after inter-pol calibration/pol selection:\n%s",
-                          feedTable)
-
-        if self.performInterBeamCal:
-            self.logger.debug("Performing inter-beam calibration using "
-                         "calibrator %s",
-                         self.interBeamCalibrator.__class__.__name__)
-
-            data = self.interBeamCalibrate(self.table, feedTable, polarization)
-        else:
-            data = self.dontInterBeamCalibrate(feedTable, polarization)
-
-        self.logger.debug("Feed table after inter-beam calibration/beam selection:\n%s",
-                          feedTable)
-        self.logger.debug("Final calibrated data: [%f ... %f]", data[0], data[-1])
+        self.logger.info("Final calibrated data: [%f ... %f]", data[0], data[-1])
         return data
 
 
@@ -249,8 +265,8 @@ class TraditionalCalibrator(Calibrator):
 
         # TODO: Double check this assumption
         uniqueRows = numpy.unique(table['FEED', 'POLARIZE',
-                                       'CENTER_SKY', 'BANDWDTH',
-                                       'HIGH_CAL'])
+                                        'CENTER_SKY', 'BANDWDTH',
+                                        'HIGH_CAL'])
         for feed, pol, centerSkyFreq, bandwidth, highCal in uniqueRows:
             mask = (
                 (table['FEED'] == feed) &
@@ -277,30 +293,6 @@ class TraditionalCalibrator(Calibrator):
 class KaCalibrator(TraditionalCalibrator):
     # Ka has two feeds and two polarizations, but only one polarization
     # exists in each feed
-
-    def dontAttenuate(self):
-        calTable = self.initCalTable()
-        calOffTable = self.table.query(CAL=0)
-        for feed in calOffTable.getUnique('FEED'):
-            feedTable = calOffTable.query(FEED=feed)
-            # TODO: Assert unique
-            pol = feedTable['POLARIZE'][0]
-            factor = feedTable['FACTOR'][0]
-            feedSigData = feedTable.query(SIGREF=0)['DATA']
-            feedRefData = feedTable.query(SIGREF=1)['DATA']
-            power = feedSigData - feedRefData
-            calTable.add_row({
-                'FEED': feed,
-                'POLARIZE': pol,
-                'FACTOR': factor,
-                'DATA': power
-            })
-
-        return calTable
-
-    def dontInterPolCalibrate(self, feedTable, calTable, polarization):
-        for row in feedTable:
-            row['DATA'] = calTable.query(FEED=row['FEED'])['DATA']
 
     def getSigFeedTa(self, sigref, tcal):
         trackFeed = self.table.getTrackBeam()
@@ -358,6 +350,29 @@ class KaCalibrator(TraditionalCalibrator):
             'FACTOR': refTcal,
             'DATA': refTa
         })
+        return calTable
+
+    def selectNonCalData(self):
+        calTable = self.initCalTable()
+        calOffTable = self.table.query(CAL=0)
+        for feed in calOffTable.getUnique('FEED'):
+            polTable = calOffTable.query(FEED=feed)
+            # TODO: Assert unique
+            pol = polTable['POLARIZE'][0]
+            factor = polTable['FACTOR'][0]
+            feedSigData = polTable.query(SIGREF=0)['DATA']
+            feedRefData = polTable.query(SIGREF=1)['DATA']
+            power = feedSigData - feedRefData
+            calTable.add_row({
+                'FEED': feed,
+                'POLARIZE': pol,
+                'FACTOR': factor,
+                'DATA': power
+            })
+
+        return calTable
+
+    def selectBeam(self, calTable, feed):
         return calTable
 
 

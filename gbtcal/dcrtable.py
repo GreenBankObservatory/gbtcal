@@ -66,8 +66,8 @@ class DcrTable(StrippedTable):
         trackBeam = self.getTrackBeam()
 
         if len(feeds) < 2:
-            raise ValueError("Must have at least two feeds to determine "
-                             "the tracking/reference feeds")
+            return trackBeam, None
+
         if len(feeds) > 2:
             logger.warning("More than two feeds provided; selecting second feed as "
                            "reference feed!")
