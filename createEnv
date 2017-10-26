@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    venv_name="${USER}_gbtcal_env"
+else
+    venv_name="$1"
+fi
+
+virtualenv -p /opt/local/bin/python2.7 "$venv_name"
+
+source "$venv_name/bin/activate"
+
+pip install -U pip setuptools
+pip install -r requirements.txt
