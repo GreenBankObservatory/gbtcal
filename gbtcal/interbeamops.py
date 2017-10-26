@@ -18,5 +18,5 @@ class BeamSubtractionDBA(InterBeamCalibrate):
         # TODO: Do we need to select on pol?
         sigFeedCalData = table.query(FEED=sigFeed)['DATA'][0]
         refFeedCalData = table.query(FEED=refFeed)['DATA'][0]
-        logger.debug("Subtracting %s from %s", sigFeedCalData, refFeedCalData)
+        logger.debug("Subtracting sig-feed data from ref-feed data")
         return sigFeedCalData - refFeedCalData
