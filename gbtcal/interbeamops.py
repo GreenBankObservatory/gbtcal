@@ -5,12 +5,12 @@ logger = logging.getLogger(__name__)
 
 
 class InterBeamCalibrate(object):
-    def calibrate(self, rawTable, feedTable):
+    def calibrate(self, rawTable, feedTable, polarization):
         raise NotImplementedError("All InterBeamCalibrate subclasses "
                                   "must implement calibrate()")
 
 class BeamSubtractionDBA(InterBeamCalibrate):
-    def calibrate(self, rawTable, feedTable):
+    def calibrate(self, rawTable, feedTable, polarization):
         """Here we're just finding the difference between the two beams"""
 
         sigFeed, refFeed  = rawTable.getSigAndRefFeeds()

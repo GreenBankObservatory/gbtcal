@@ -177,9 +177,9 @@ class Calibrator(object):
         for row in feedTable:
             row['DATA'] = calTable.query(POLARIZE=polarization, FEED=row['FEED'])['DATA']
 
-    def interBeamCalibrate(self, sigFeedData, refFeedData):
+    def interBeamCalibrate(self, sigFeedData, refFeedData, polarization):
         self.logger.info("STEP: interBeamCalibrate")
-        return self.interBeamCalibrator.calibrate(sigFeedData, refFeedData)
+        return self.interBeamCalibrator.calibrate(sigFeedData, refFeedData, polarization)
 
     def dontInterBeamCalibrate(self, feedTable, polarization):
         self.logger.debug("STEP: dontInterBeamCalibrate")
@@ -222,7 +222,7 @@ class Calibrator(object):
                          "calibrator %s",
                          self.interBeamCalibrator.__class__.__name__)
 
-            data = self.interBeamCalibrate(self.table, feedTable)
+            data = self.interBeamCalibrate(self.table, feedTable, polarization)
         else:
             data = self.dontInterBeamCalibrate(feedTable, polarization)
 
