@@ -61,7 +61,7 @@ class TestCalibrate(unittest.TestCase):
                     expectedResults.keys())
         for calOption, result in expectedResults.items():
             # NOTE: Uncomment this to run only a specific type of test
-            # if calOption != ('BeamSwitchedTBOnly', 'YR'):
+            # if calOption != ('DualBeam', 'Avg'):
             #     continue
 
             logger.info("Executing test of: %s", calOption)
