@@ -44,18 +44,18 @@ class Calibrator(object):
             )
         )
 
-        @property
-        def attenuator(self):
-            raise NotImplementedError("All Calibrator subclasses must define "
-                                      "an attenuator")
-        @property
-        def interPolCalibrator(self):
-            raise NotImplementedError("All Calibrator subclasses must define "
-                                      "an interPolCalibrator")
-        @property
-        def interBeamCalibrator(self):
-            raise NotImplementedError("All Calibrator subclasses must define "
-                                      "an interBeamCalibrator")
+    @property
+    def attenuator(self):
+        raise NotImplementedError("All Calibrator subclasses must define "
+                                  "an attenuator")
+    @property
+    def interPolCalibrator(self):
+        raise NotImplementedError("All Calibrator subclasses must define "
+                                  "an interPolCalibrator")
+    @property
+    def interBeamCalibrator(self):
+        raise NotImplementedError("All Calibrator subclasses must define "
+                                  "an interBeamCalibrator")
 
     def describe(self):
         """Describe the functionality of this Calibrator in its current configuration"""
