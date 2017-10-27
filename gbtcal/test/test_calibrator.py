@@ -58,8 +58,12 @@ class TestCalibrate(unittest.TestCase):
                     expectedResults.keys())
         for calOption, result in expectedResults.items():
             # NOTE: Uncomment this to run only a specific type of test
-            # if calOption != ('DualBeam', 'Avg'):
+            # if calOption != ('BeamSwitchedTBOnly', 'YR'):
             #     continue
+
+            # Convert this into DualBeam so our code understands it
+            if calOption[0] == 'BeamSwitchedTBOnly':
+                calOption = ('DualBeam', calOption[1])
 
             logger.info("Executing test of: %s", calOption)
             calMode = calOption[0]
@@ -117,22 +121,14 @@ class TestCalibrate(unittest.TestCase):
                 # of the sky (at any given time, at least)
                 ('Raw', 'Avg'),
                 ('BeamSwitchedTBOnly', 'Avg'),
-
-
-                # Sparrow does NOT properly calibrate for XL, so we ignore those
-                # Sparrow tries to get XL from tracking beam, and instead gets XL from other beam
-
-                # ('TotalPower', 'XL'),
+                # TB only makes no sense fo the non-signal beam (feed 2, L)
                 ('BeamSwitchedTBOnly', 'XL'),
-                # ('BeamSwitchedTBOnly', 'YR'),
-                #
             ]
         )
 
     def testRcvrArray75_115(self):
         self._testCalibrate(
             "AGBT17A_423_01:16:RcvrArray75_115",
-            # TODO: Test that these fail gracefully
             optionsToIgnore=[
                 ('Raw', 'YR'),
                 ('Raw', 'Avg')

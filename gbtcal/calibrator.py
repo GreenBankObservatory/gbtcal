@@ -144,9 +144,9 @@ class Calibrator(object):
         polTable = QueryTable([calTable.getUnique('POLARIZE')])
         # Then add the data column, but don't populate it yet
         polTable.add_column(Column(name='DATA',
-                                    length=len(polTable),
-                                    dtype=numpy.float64,
-                                    shape=calTable['DATA'].shape[1]))
+                                   length=len(polTable),
+                                   dtype=numpy.float64,
+                                   shape=calTable['DATA'].shape[1]))
 
         self.logger.debug("Initialized polTable:\n%s", polTable)
         return polTable
@@ -165,7 +165,7 @@ class Calibrator(object):
 
         calTable = self.initCalTable()
         for feed, pol in self.table.getUnique(['FEED', 'POLARIZE']):
-            dataToAttenuate = self.table.query(FEED=feed, POLARIZE=pol)
+            dataToAttenuate = self.table.query(FEED=feed, POLARIZE=pol, SIGREF=0)
             factor = dataToAttenuate['FACTOR'][0]
             power = self.converter.convertCountsToKelvin(dataToAttenuate)
             calTable.add_row({
@@ -323,6 +323,14 @@ class TraditionalCalibrator(Calibrator):
 
 
 class KaCalibrator(TraditionalCalibrator):
+
+    # TODO: We don't actually use an interbeam calibrator here, because
+    # all of the functionality is implemented within interBeamCalibrate
+    # This is pretty dumb, and I think exposes pretty well the major
+    # shortcoming of the current architecture: instead of having
+    # methods that do a bunch of stuff and then call an "inter-beam calibrator",
+    # the InterBeamCalibrator should do EVERYTHING!
+    interBeamCalibrator = None
     """Calibrator for the Ka Band receiver
 
     Ka has two feeds and two polarizations, but only one polarization
@@ -353,20 +361,36 @@ class KaCalibrator(TraditionalCalibrator):
             tCal=tcal
         )
 
-    def convertToKelvin(self):
-        """Ka performs its attenuation in a non-standard way.
+    def selectNonCalData(self):
+        """Ka has an additional operation to perform in its selection of non-cal data
 
-        Each beam needs to be treated differently, although all data
-        comes from the signal beam"""
+        It must handle the SIGREF state column"""
 
-        self.logger.debug("STEP: convertToKelvin")
-
-        # Populate FACTORS column with calibration factors (in place)
-        self.findCalFactors()
-        self.logger.debug("Populated cal factors")
-
+        self.logger.debug("STEP: selectNonCalData")
         calTable = self.initCalTable()
+        calOffTable = self.table.query(CAL=0)
+        for pol in calOffTable.getUnique('POLARIZE'):
+            calTableForPol = calOffTable.query(POLARIZE=pol)
+            feed = calTableForPol['FEED'][0]
+            factor = calTableForPol['FACTOR'][0]
+            feedSigData = calTableForPol.query(SIGREF=0)['DATA']
+            feedRefData = calTableForPol.query(SIGREF=1)['DATA']
+            power = feedSigData - feedRefData
+            calTable.add_row({
+                'FEED': feed,
+                'POLARIZE': pol,
+                'FACTOR': factor,
+                'DATA': power
+            })
 
+        return calTable
+
+    def interBeamCalibrate(self, calTable):
+        self.logger.debug("STEP: interBeamCalibrate")
+        self.logger.debug("Performing inter-beam calibration using "
+                             "calibrator %s",
+                             self.interBeamCalibrator.__class__.__name__)
+        polTable = self.initPolTable(calTable)
 
         sigFeed, refFeed = self.table.getSigAndRefFeeds()
 
@@ -378,48 +402,24 @@ class KaCalibrator(TraditionalCalibrator):
         refTa = self.getSigFeedTa(sigref=1, tcal=refTcal)
 
         sigPol = self.table.query(FEED=sigFeed)['POLARIZE'][0]
-        refPol = self.table.query(FEED=refFeed)['POLARIZE'][0]
-        calTable.add_row({
-            'FEED': sigFeed,
-            'POLARIZE': sigPol,
-            'FACTOR': sigTcal,
-            'DATA': sigTa
-        })
-        calTable.add_row({
-            'FEED': refFeed,
-            'POLARIZE': refPol,
-            'FACTOR': refTcal,
-            'DATA': refTa
-        })
-        return calTable
+        # refPol = self.table.query(FEED=refFeed)['POLARIZE'][0]
 
-    def selectNonCalData(self):
-        """Ka has an additional operation to perform in its selection of non-cal data
+        sigPolMask = (polTable['POLARIZE'] == sigPol)
+        polTable['DATA'][sigPolMask] = sigTa - refTa
+        # NOTE: There isn't a good value to put in here, so
+        # I'm just leaving it at zero
+        # refPolMask = (polTable['POLARIZE'] == refPol)
+        # polTable['DATA'][refPolMask] = refTa - sigTa
 
-        It must handle the SIGREF state column"""
-
-        calTable = self.initCalTable()
-        calOffTable = self.table.query(CAL=0)
-        for feed in calOffTable.getUnique('FEED'):
-            polTable = calOffTable.query(FEED=feed)
-            # TODO: Assert unique
-            pol = polTable['POLARIZE'][0]
-            factor = polTable['FACTOR'][0]
-            feedSigData = polTable.query(SIGREF=0)['DATA']
-            feedRefData = polTable.query(SIGREF=1)['DATA']
-            power = feedSigData - feedRefData
-            calTable.add_row({
-                'FEED': feed,
-                'POLARIZE': pol,
-                'FACTOR': factor,
-                'DATA': power
-            })
-
-        return calTable
+        return polTable
 
     def selectBeam(self, calTable, feed):
+        self.logger.debug("STEP: selectBeam")
         polTable = self.initPolTable(calTable)
-        polTable['DATA'] = calTable['DATA']
+        for row in calTable:
+            polMask = polTable['POLARIZE'] == row['POLARIZE']
+            polTable['DATA'][polMask] = row['DATA']
+
         return polTable
 
 
