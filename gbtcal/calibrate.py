@@ -1,7 +1,10 @@
 """Entry point to calibration pipeline"""
 
+from __future__ import print_function
+import argparse
 import logging
 import os
+
 import numpy
 
 from gbtcal.rcvr_table import ReceiverTable
@@ -85,6 +88,7 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, calibrator=None):
 
 
 def validateOptions(rcvrRow, calMode, polMode):
+    """Validate given calMode and polMode against those in the given receiver table row"""
     rcvrName = rcvrRow['M&C Name'][0]
     calOptions = rcvrRow['Cal Options'][0]
     polOptions = rcvrRow['Pol Options'][0]
@@ -98,52 +102,64 @@ def validateOptions(rcvrRow, calMode, polMode):
                          .format(polMode, rcvrName, polOptions))
 
 
-def calibrate(projPath, scanNum, calMode, polMode, rcvrTablePath=None, calibrator=None):
+def calibrate(projPath, scanNum, calMode, polMode,
+              rcvrTablePath=None, calibrator=None):
+    """Decode the IF/DCR table for given project path and scan, then calibrate"""
+
     if not rcvrTablePath:
         rcvrTablePath = os.path.join(SCRIPTPATH, "rcvrTable.csv")
 
+    # Load the receiver table from the rcvrTable.csv
     rcvrTable = ReceiverTable.load(rcvrTablePath)
+    # Decode the IF/DCR data table for the given scan
     dataTable = decode(projPath, scanNum)
 
-    return doCalibrate(rcvrTable, dataTable, calMode, polMode, calibrator=calibrator)
+    # Pass these on to doCalibrate
+    return doCalibrate(rcvrTable, dataTable, calMode, polMode,
+                       calibrator=calibrator)
 
 
-def calibrateToFile(projPath, scanNum, calMode, polMode):
+def parseArgs():
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("projpath",
+                        help="The project directory where fits data is "
+                             "stored (e.g. /home/gbtdata/TGBT15A_901).")
+    parser.add_argument("scan",
+                        help="The scan number for the first scan in "
+                        "the OOF series.",
+                        type=int)
+    parser.add_argument("--calmode",
+                        choices=CALOPTS.all(),
+                        help="A GFM-style calibration mode",
+                        default=CALOPTS.RAW)
+    parser.add_argument("--polmode",
+                        choices=POLOPTS.all(),
+                        help="A GFM-style polarization mode",
+                        default=POLOPTS.AVG)
+    parser.add_argument("-v", "--verbose",
+                        action="store_true")
+    parser.add_argument("-o", "--output",
+                        help="The output path to save the calibrated data. "
+                             "Note that this uses numpy.savetxt, and will "
+                             "result in a file in which each index is saved "
+                             "to its own line")
+    return parser.parse_args()
 
-    data = calibrate(projPath, scanNum, calMode, polMode)
-    logger.debug("data: %s", data)
-    projName = projPath.split('/')[-1]
-    fn = "{}.{}.{}.{}.decode".format(projName, scanNum, calMode, polMode)
-    fnp = os.path.join("/tmp", fn)
-    logger.debug("data file: %s", fnp)
-    with open(fnp, 'w') as f:
-        f.write(str(list(data[0])))
+
+def main():
+    args = parseArgs()
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    data = calibrate(args.projpath, args.scan, args.calmode, args.polmode)
+    print("Calibrated data:")
+    print(data)
+    if args.output:
+        print("Saving calibrated data to {}".format(args.output))
+        numpy.savetxt(args.output, data)
 
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("projdir", help="The project directory where fits data is stored (e.g. /home/gbtdata/TGBT15A_901).")
-    parser.add_argument("scannum", help="The scan number for the first scan in the OOF series.", type=int)
-    parser.add_argument("--calmode", help="Raw, TotalPower, or DualBeam", default='Raw')
-    parser.add_argument("--polmode", help="XL, YR, Avg", default='Avg')
-
-    # Here we provide a quick and easy way to calibrate stuff:
-    args = parser.parse_args()
-
-    # calMode = 'DualBeam'
-    # polMode = 'XL'
-    calibrateToFile(args.projdir, args.scannum, args.calmode, args.polmode)
-    # TBF; derive from args
-    # projPath = "/home/archive/science-data/11B/AGBT11B_023_02"
-    # scanNum = 1
-    # # projPath = '/home/archive/science-data/16B/AGBT16B_119_04'
-    # projPath = '/home/archive/science-data/12A/AGBT12A_364_02'
-    # # TBF: derive from receivers table
-    # calModes = ["Raw", "TotalPower", "DualBeam"]
-    # polModes = ["XL", "YR", "Avg"]
-    # logger.debug("Calibrating scan {}, proj {}".format(scanNum, projPath))
-    # for cal in calModes:
-    #     for pol in polModes:
-    #         logger.debug("Calibrating for {}, {}".format(cal, pol))
-    #         data = calibrate(projPath, scanNum, cal, pol)
+    main()
