@@ -4,12 +4,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class InterBeamCalibrate(object):
+class InterBeamOperator(object):
     def calibrate(self, table):
-        raise NotImplementedError("All InterBeamCalibrate subclasses "
+        raise NotImplementedError("All InterBeamOperator subclasses "
                                   "must implement calibrate()")
 
-class BeamSubtractionDBA(InterBeamCalibrate):
+class BeamSubtractor(InterBeamOperator):
     def calibrate(self, table):
         """Here we're just finding the difference between the two beams"""
 
