@@ -14,18 +14,18 @@ SCRIPTPATH = os.path.dirname(os.path.abspath(__file__))
 # with that originally computed by Sparrow (GFM).
 # The Sparrow results live in files with descriptive filenames,
 # such as <projectname>.<scannumber>.<receiver>.
-# The home of the data that these Sparrow results were created from 
+# The home of the data that these Sparrow results were created from
 # live in a separate file, organized by receiver, project path, and
 # scan numbers.
 # The basic flow of these tests is to:
-#    * Find where all the DCR data lives in the archive by reading the 
+#    * Find where all the DCR data lives in the archive by reading the
 #      above mentioned file
 #    * For each of these scans:
 #       * Computing the various DCR Calibration results
 #       * Compare these results to what are in the Sparrow files
-#    * All results are printed to a report, including any problems 
+#    * All results are printed to a report, including any problems
 #      encountered, besides the obvious mismatching results
-        
+
 def hasRedundantScanNums(projPath):
     "Projects that repeat scan numbers are problematic"
 
@@ -78,7 +78,7 @@ def testAllResults():
         dataSrcDct = eval(f.read())
 
     projLimit = 10
-    scanLimit = 10
+    scanLimit = 1
 
     # we simply aren't supporting all receivers
     # Rcvr18_26: The K-band receiver has been retired and is
@@ -226,6 +226,12 @@ def compare(projPath, scanNum, resultsDict, receiver):
         except:
             print("Something went wrong", traceback.format_exc())
             return False, "Exception"
+
+        # The sparrow results for (Raw, Avg) are still ints,
+        # so we need to take that into account
+        if spKey == ('Raw', 'Avg'):
+            actual = actual.astype(int)
+
         if not numpy.allclose(actual, expected):
             al = arraySummary(actual),
             el = arraySummary(expected),
