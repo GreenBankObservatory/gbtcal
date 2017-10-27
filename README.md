@@ -32,12 +32,13 @@ The home of the data that these Sparrow results were created from
 live in a separate file, organized by receiver, project path, and
 scan numbers.
 The basic flow of these tests is to:
-    * Find where all the DCR data lives in the archive by reading the
+
+   * Find where all the DCR data lives in the archive by reading the
       above mentioned file
-    * For each of these scans:
-       * Computing the various DCR Calibration results
-       * Compare these results to what are in the Sparrow files
-    * All results are printed to a report, including any problems
+   * For each of these scans:
+      * Computing the various DCR Calibration results
+      * Compare these results to what are in the Sparrow files
+   * All results are printed to a report, including any problems
       encountered, besides the obvious mismatching results
 
 ## Dataflow Overview
@@ -71,3 +72,76 @@ Most commonly this stage simply subtracts the reference data from the signal dat
 Right now this is literally just polarization averaging. However, it has been left discrete and generic to accommodate other possible polarization calibration operations. The idea here is that any sort of operations that require data from two different polarizations (within a feed) would be done in this stage.
 
 An `InterPolCalibrate` class must implement a `calibrate` method.
+
+## Calibrator Stategy Classes
+
+As seen in this repo's UML, there is a class heirarchy of Calibrators, that can be extended for new receivers that need
+their own way of calibrating DCR data.  Each of these classes will also used different classes for their converter, polarization and beam calibration phases.
+
+Here's brief overview of the classes:
+
+### Calibrator
+
+This is the abstract base class that contains common methods almost all receivers will need for calibrating their DCR data.
+
+### TraditionalCalibrator
+
+Most of our receivers can calibrate their DCR data with this class (a child of Calibrator).  This calibrator will gather receiver calibration temperatures from the receiver calibration FITS file.  It will and these in an 'Antenna Temperature', or 'Total Power' equation by it's convert class CalDiodeConverter.
+
+
+### CalSeqCalibrator
+
+This is another abstract class (child of Calibrator).  This is for receivers that don't use a receiver calibration FITS file, but instead need to calculate their 'gains' from other scans.  These gains are then used in the CalSeqConverter class.
+
+Examples of children of this class are the WBandCalibrator class and ArgusCalibrator, each of which have helper classes to calculate their gains from other scans.
+
+### KaCalibrator
+
+This is the ugly duckling or black sheep of this group of classes, and is part of the reason why such a generic framework had to be constructed to cover all DCR calibration cases.
+
+The Ka receiver has only X polarization in it's first feed, and only Y in it's second.  In addition it's beam calibration step is completely different from the other classes.
+
+TBF: this class is a work in progress.
+
+## Table Driven Behavior
+
+Much of the behavior for determining how to calibrate a specific set of DCR data is determined by the receiver is used.  Instead of using conditionals to implement this receiver specific behavior, we use a table-driven approach.
+
+The file rcvrTable.csv contains this "receiver table", and is an enhanced comma-separated file used by rcvr_table.py to determine how
+each receiver's DCR data should be calibrated.  For example, the "Cal Strategy" column contains the name of the calibrator class that each receiver should use.  Other useful columns are "Num Beams" and "Num Pols".
+
+ This is similar to the wiki page:
+ https://safe.nrao.edu/wiki/bin/view/GB/Knowledge/WhichReceiverIsThat
+
+## Examples
+
+ The UML also has some excellent examples drawn out, but here we'll also flesh out how these are used.
+
+### L-band, XL polarization, Raw data
+
+ This is the equivalent of the data you would see in the GFM Continuum plugin, for the 'X' or 'L' polarization, using the 'Sig / No Cal' phase.
+
+   * The raw data table is found from the project path and scan number using gbtcal.decode
+   * The receiver table is loaded from the CSV file    * calibrate.doCalibrate converts the GFM-style polarization and calibration options to the appropriate values for flags that determine what steps the calibrator will do.  In our case, we won't be do *any* steps.
+   * calibrate.doCalibrate also determines from the receiver table's 'Cal Strategy' column what calibrator class to use.  In our case, Rcvr1_2 is the TraditionalCalibrator class.
+   * finally, we call this class's object's calibrate method, passing in the 'XL' option.
+   * since our class won't be performing conversion, inter-beam or inter-polarization operations, it simply:
+      * calls selectNonCalData: this is essentially getting the 'raw' data and placing it in a calTable
+      * calls selectBeam: this is a no-op, since L-band has one beam.  But our calTable is passed on to a polTable
+      * calls selectPol: here we select the 'XL' polarization from the polTable - and that's our final answer!
+
+### L-band, Average polarization, Total Power data.
+
+This is the equivalent of what you might see in the GFM Pointing Plugin, when the options selected are 'Total Power' & 'Both'.
+
+   * we follow the same first two steps as the case above
+   * this time, calibrate.doCalibrate maps these GFM-style choices to these flags:
+      * performConversion = True; because we asked for Total Power
+      * performInterPolOp = True; because we asked for Average polarization
+      * performInterBeamOp = False; because we didn't ask for something like Dual Beam, which would have been invalid for this single beam receiver anyways.
+   * we choose the TraditionalCalibrator again this time, from the receiver table
+   * this time the call to the object's calibrate method sees different steps followed:
+      * convertToKelvin uses the TraditionalCalibrator's converter class (CalDiodCalibrator) to find the receiver calibration temperatures, and use these with the Antenna Temperature equation to convert our raw values to the new values in the calTable
+      * selectBeam is called again, as in the previous case (no-op), to produce the polTable
+      * interPolCalibrate uses the TraditionalCalibrator's interPolCalibrator class (InterPolAverager) to average the two polarizations.  That's our final answer!
+
