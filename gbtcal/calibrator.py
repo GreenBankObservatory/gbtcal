@@ -12,9 +12,9 @@ import numpy
 from constants import POLOPTS
 from gbtcal.decode import getFitsForScan, getTcal, getRcvrCalTable
 from table.querytable import QueryTable, copyTable
-from gbtcal.attenuate import CalDiodeAttenuate, CalSeqAttenuate
-from gbtcal.interpolops import InterPolAverage
-from gbtcal.interbeamops import BeamSubtractionDBA
+from gbtcal.converter import CalDiodeConverter, CalSeqConverter
+from gbtcal.interpolops import InterPolAverager
+from gbtcal.interbeamops import BeamSubtractor
 from WBandCalibration import WBandCalibration
 from ArgusCalibration import ArgusCalibration
 
@@ -27,17 +27,17 @@ class Calibrator(object):
     executed if a class is provided to execute them"""
 
     def __init__(self, table,
-                 performAttenuation=False,
-                 performInterPolCal=False,
-                 performInterBeamCal=False):
+                 performConversion=False,
+                 performInterPolOp=False,
+                 performInterBeamOp=False):
         self.logger = logging.getLogger("{}.{}".format(__name__,
                                                        self.__class__.__name__))
         self.table = table.copy()
         self.projPath = table.meta['PROJPATH']
         self.scanNum = table.meta['SCAN']
-        self.performAttenuation = performAttenuation
-        self.performInterPolCal = performInterPolCal
-        self.performInterBeamCal = performInterBeamCal
+        self.performConversion = performConversion
+        self.performInterPolOp = performInterPolOp
+        self.performInterBeamOp = performInterBeamOp
 
         # Default the FACTOR column to all 1s -- indicates a no-op for
         # attenuation
@@ -49,9 +49,9 @@ class Calibrator(object):
         )
 
     @property
-    def attenuator(self):
+    def converter(self):
         raise NotImplementedError("All Calibrator subclasses must define "
-                                  "an attenuator")
+                                  "an converter")
 
     @property
     def interBeamCalibrator(self):
@@ -69,19 +69,19 @@ class Calibrator(object):
         self.logger.debug("I will be calibrating this data:\n%s",
                     self.table)
 
-        if self.performAttenuation:
+        if self.performConversion:
             self.logger.debug("I will perform attenuation using: %s",
-                        self.attenuator.__class__.__name__)
+                        self.converter.__class__.__name__)
         else:
             self.logger.debug("I will select the cal-off data")
 
-        if self.performInterBeamCal:
+        if self.performInterBeamOp:
             self.logger.debug("I will perform inter-beam calibration using: %s",
                         self.interBeamCalibrator.__class__.__name__)
         else:
             self.logger.debug("I will select the data from the signal beam")
 
-        if self.performInterPolCal:
+        if self.performInterPolOp:
             self.logger.debug("I will perform inter-pol calibration using: %s",
                         self.interPolCalibrator.__class__.__name__)
         else:
@@ -155,10 +155,10 @@ class Calibrator(object):
         raise NotImplementedError("findCalFactors() must be implemented for "
                                   "all Calibrator subclasses!")
 
-    def attenuate(self):
-        """Populate calTable by attenuating using the selected attenuator"""
+    def convertToKelvin(self):
+        """Populate calTable by attenuating using the selected converter"""
 
-        self.logger.debug("STEP: attenuate")
+        self.logger.debug("STEP: convertToKelvin")
         # Populate FACTORS column with calibration factors (in place)
         self.findCalFactors()
         self.logger.debug("Populated cal factors")
@@ -167,7 +167,7 @@ class Calibrator(object):
         for feed, pol in self.table.getUnique(['FEED', 'POLARIZE']):
             dataToAttenuate = self.table.query(FEED=feed, POLARIZE=pol)
             factor = dataToAttenuate['FACTOR'][0]
-            power = self.attenuator.attenuate(dataToAttenuate)
+            power = self.converter.convertCountsToKelvin(dataToAttenuate)
             calTable.add_row({
                 'FEED': feed,
                 'POLARIZE': pol,
@@ -188,7 +188,7 @@ class Calibrator(object):
             calTable.add_row({
                 'FEED': feed,
                 'POLARIZE': pol,
-                'FACTOR': 1.0,  # We didn't attenuate, so set factor to 1
+                'FACTOR': 1.0,  # We didn't convertToKelvin, so set factor to 1
                 'DATA': calOffTable.query(FEED=feed, POLARIZE=pol)['DATA'][0]
              })
 
@@ -236,10 +236,10 @@ class Calibrator(object):
     def calibrate(self, polarization):
         """Execute the calibration pipeline for the given polarization option"""
 
-        # If we have an attenuator, then use it. This will
-        # attenuate the data and populate the calData DATA column
-        if self.performAttenuation:
-            calTable = self.attenuate()
+        # If we have an converter, then use it. This will
+        # convertToKelvin the data and populate the calData DATA column
+        if self.performConversion:
+            calTable = self.convertToKelvin()
         # If not, we just remove all of our rows that have data
         # taking while the cal diode was on
         else:
@@ -250,7 +250,7 @@ class Calibrator(object):
 
         self.logger.debug("calTable after attenuation/'real data' selection:\n%s",
                           calTable)
-        if self.performInterBeamCal:
+        if self.performInterBeamOp:
             polTable = self.interBeamCalibrate(calTable)
         else:
             polTable = self.selectBeam(calTable, calTable.meta['SIGFEED'])
@@ -264,7 +264,7 @@ class Calibrator(object):
         # If we have an inter-pol calibrator, then use it. This will
         # calibrate the data between the two polarizations in the
         # calTable and store the results by feed in polTable
-        if self.performInterPolCal:
+        if self.performInterPolOp:
             data = self.interPolCalibrate(polTable)
         # Otherwise, we select the data for the given polarization
         else:
@@ -281,9 +281,9 @@ class TraditionalCalibrator(Calibrator):
 
     This is the "happy path" -- nothing crazy going on, no special cases"""
 
-    attenuator = CalDiodeAttenuate()
-    interPolCalibrator = InterPolAverage()
-    interBeamCalibrator = BeamSubtractionDBA()
+    converter = CalDiodeConverter()
+    interPolCalibrator = InterPolAverager()
+    interBeamCalibrator = BeamSubtractor()
 
     def findCalFactors(self):
         """Determine "factors" for data; use to populate FACTOR column"""
@@ -347,19 +347,19 @@ class KaCalibrator(TraditionalCalibrator):
             raise ValueError("tCal for reference beam should be identical "
                              "whether CAL is on or off")
 
-        return self.attenuator.getAntennaTemperature(
+        return self.converter.getAntennaTemperature(
             calOnData=calOnTable['DATA'][0],
             calOffData=calOffTable['DATA'][0],
             tCal=tcal
         )
 
-    def attenuate(self):
+    def convertToKelvin(self):
         """Ka performs its attenuation in a non-standard way.
 
         Each beam needs to be treated differently, although all data
         comes from the signal beam"""
 
-        self.logger.debug("STEP: attenuate")
+        self.logger.debug("STEP: convertToKelvin")
 
         # Populate FACTORS column with calibration factors (in place)
         self.findCalFactors()
@@ -427,9 +427,9 @@ class CalSeqCalibrator(Calibrator):
     """A Calibrator that uses an external cal sequence for calibration,
     instead of the embedded cal diode information"""
 
-    attenuator = CalSeqAttenuate()
-    interPolCalibrator = InterPolAverage()
-    interBeamCalibrator = BeamSubtractionDBA()
+    converter = CalSeqConverter()
+    interPolCalibrator = InterPolAverager()
+    interBeamCalibrator = BeamSubtractor()
 
     def findCalFactors(self):
         table = self.table

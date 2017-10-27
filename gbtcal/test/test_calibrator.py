@@ -6,9 +6,6 @@ import unittest
 import numpy
 
 from gbtcal.calibrate import calibrate
-from gbtcal.interbeamops import BeamSubtractionDBA
-from gbtcal.interpolops import InterPolAverage
-from gbtcal.attenuate import CalDiodeAttenuate
 from gbtcal.rcvr_table import ReceiverTable
 from gbtcal.constants import POLOPTS, CALOPTS
 
@@ -128,7 +125,7 @@ class TestCalibrate(unittest.TestCase):
                 # ('TotalPower', 'XL'),
                 ('BeamSwitchedTBOnly', 'XL'),
                 # ('BeamSwitchedTBOnly', 'YR'),
-                # 
+                #
             ]
         )
 

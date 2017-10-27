@@ -7,13 +7,14 @@ import numpy
 from gbtcal.rcvr_table import ReceiverTable
 from gbtcal.constants import CALOPTS, POLOPTS, POLS
 from gbtcal.decode import decode
-import gbtcal.attenuate
+import gbtcal.converter
 import gbtcal.calibrator
 
 
 SCRIPTPATH = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger(__name__)
+
 
 def doCalibrate(receiverTable, dataTable, calMode, polMode, calibrator=None):
     receiver = dataTable.meta['RECEIVER']
@@ -36,16 +37,16 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, calibrator=None):
 
     # If the user has requested that we do any mode other than raw
     # it is assumed that we do attenuation
-    performAttenuation = bool(calMode != CALOPTS.RAW)
+    performConversion = bool(calMode != CALOPTS.RAW)
 
     # If the user has requested that we do polarization averaging,
     # we need to enable our interPolCal
-    performInterPolCal = bool(polMode == POLOPTS.AVG)
+    performInterPolOp = bool(polMode == POLOPTS.AVG)
 
     # If the user has selected a mode that operates on two beams,
     # enable our interBeamCal
     dualBeamCalOpts = [CALOPTS.DUALBEAM, CALOPTS.BEAMSWITCHEDTBONLY]
-    performInterBeamCal = bool(calMode in dualBeamCalOpts)
+    performInterBeamOp = bool(calMode in dualBeamCalOpts)
 
 
     # If a calibrator has been given, use it
@@ -75,9 +76,9 @@ def doCalibrate(receiverTable, dataTable, calMode, polMode, calibrator=None):
 
     calibrator = calibratorClass(
         dataTable,
-        performAttenuation,
-        performInterPolCal,
-        performInterBeamCal
+        performConversion,
+        performInterPolOp,
+        performInterBeamOp
     )
     calibrator.describe()
     return calibrator.calibrate(polOption)

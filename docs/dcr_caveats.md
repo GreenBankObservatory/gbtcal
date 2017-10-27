@@ -2,29 +2,29 @@ This is the table generated for /home/sandboxes/tchamber/repos/sparrow/sandbox/s
 This is what we have referred to as the "pathological case", where we cannot uniquely select a phase based on feed, polarization, frequency.
 That is, the DCR recorded more data than it "should have", and the last half (or first half?) of the table is redundant.
 
-            RECEIVER              FEED RECEPTOR POLARIZE CENTER_SKY BANDWDTH  PORT SRFEED1 SRFEED2 HIGH_CAL SIGREF  CAL    DATA [300]        TCAL     INDEX
-              none                none   none     none       Hz        Hz     none   none    none    none
-             str32               int32   str8     str2    float32   float32  int32  int32   int32   int32   uint8  uint8     int32         float64    int64
--------------------------------- ----- -------- -------- ---------- -------- ----- ------- ------- -------- ------ ----- -------------- ------------- -----
-Rcvr1_2                              1 XL             X    1.41e+09    8e+07     1       0       0        0      0     0 30770 .. 30662 1.58350000381     0
-Rcvr1_2                              1 XL             X    1.41e+09    8e+07     1       0       0        0      0     1 32611 .. 32479 1.58350000381     1
-Rcvr1_2                              1 YR             Y    1.41e+09    8e+07     3       0       0        0      0     0 32872 .. 32782 1.63750000596     2
-Rcvr1_2                              1 YR             Y    1.41e+09    8e+07     3       0       0        0      0     1 34865 .. 34808 1.63750000596     3
-Rcvr1_2                              1 XL             X    1.41e+09    8e+07     5       0       0        0      0     0 30231 .. 30117 1.58350000381     4
-Rcvr1_2                              1 XL             X    1.41e+09    8e+07     5       0       0        0      0     1 32121 .. 31992 1.58350000381     5
-Rcvr1_2                              1 YR             Y    1.41e+09    8e+07     7       0       0        0      0     0 30511 .. 30466 1.63750000596     6
-Rcvr1_2                              1 YR             Y    1.41e+09    8e+07     7       0       0        0      0     1 32534 .. 32519 1.63750000596     7
+                RECEIVER              FEED RECEPTOR POLARIZE CENTER_SKY BANDWDTH  PORT SRFEED1 SRFEED2 HIGH_CAL SIGREF  CAL    DATA [300]        TCAL     INDEX
+                  none                none   none     none       Hz        Hz     none   none    none    none
+                 str32               int32   str8     str2    float32   float32  int32  int32   int32   int32   uint8  uint8     int32         float64    int64
+    -------------------------------- ----- -------- -------- ---------- -------- ----- ------- ------- -------- ------ ----- -------------- ------------- -----
+    Rcvr1_2                              1 XL             X    1.41e+09    8e+07     1       0       0        0      0     0 30770 .. 30662 1.58350000381     0
+    Rcvr1_2                              1 XL             X    1.41e+09    8e+07     1       0       0        0      0     1 32611 .. 32479 1.58350000381     1
+    Rcvr1_2                              1 YR             Y    1.41e+09    8e+07     3       0       0        0      0     0 32872 .. 32782 1.63750000596     2
+    Rcvr1_2                              1 YR             Y    1.41e+09    8e+07     3       0       0        0      0     1 34865 .. 34808 1.63750000596     3
+    Rcvr1_2                              1 XL             X    1.41e+09    8e+07     5       0       0        0      0     0 30231 .. 30117 1.58350000381     4
+    Rcvr1_2                              1 XL             X    1.41e+09    8e+07     5       0       0        0      0     1 32121 .. 31992 1.58350000381     5
+    Rcvr1_2                              1 YR             Y    1.41e+09    8e+07     7       0       0        0      0     0 30511 .. 30466 1.63750000596     6
+    Rcvr1_2                              1 YR             Y    1.41e+09    8e+07     7       0       0        0      0     1 32534 .. 32519 1.63750000596     7
 
 
 This table is from /home/gbtdata/AGBT16B_285_01, and represents a "proper" dataset
 
-            RECEIVER             FEED RECEPTOR POLARIZE CENTER_SKY BANDWDTH PORT SRFEED1 SRFEED2 HIGH_CAL SIGREF CAL   DATA [589]        TCAL     INDEX
-              none               none   none     none       Hz        Hz    none   none    none    none                                                
--------------------------------- ---- -------- -------- ---------- -------- ---- ------- ------- -------- ------ --- -------------- ------------- -----
-Rcvr1_2                             1 XL             X     1.4e+09    8e+07    1       0       0        0      0   0 40739 .. 38709 1.42582168283     0
-Rcvr1_2                             1 XL             X     1.4e+09    8e+07    1       0       0        0      0   1 41993 .. 39842 1.42582168283     1
-Rcvr1_2                             1 YR             Y     1.4e+09    8e+07    3       0       0        0      0   0 42376 .. 40347 1.45186871066     2
-Rcvr1_2                             1 YR             Y     1.4e+09    8e+07    3       0       0        0      0   1 43813 .. 41631 1.45186871066     3
+                RECEIVER             FEED RECEPTOR POLARIZE CENTER_SKY BANDWDTH PORT SRFEED1 SRFEED2 HIGH_CAL SIGREF CAL   DATA [589]        TCAL     INDEX
+                  none               none   none     none       Hz        Hz    none   none    none    none
+    -------------------------------- ---- -------- -------- ---------- -------- ---- ------- ------- -------- ------ --- -------------- ------------- -----
+    Rcvr1_2                             1 XL             X     1.4e+09    8e+07    1       0       0        0      0   0 40739 .. 38709 1.42582168283     0
+    Rcvr1_2                             1 XL             X     1.4e+09    8e+07    1       0       0        0      0   1 41993 .. 39842 1.42582168283     1
+    Rcvr1_2                             1 YR             Y     1.4e+09    8e+07    3       0       0        0      0   0 42376 .. 40347 1.45186871066     2
+    Rcvr1_2                             1 YR             Y     1.4e+09    8e+07    3       0       0        0      0   1 43813 .. 41631 1.45186871066     3
 
 
 So, for my own sanity...
@@ -46,4 +46,4 @@ Paul and Richard seem to think that, for typical observations, each unique set o
 But what about bandwidth? Is it just that it is always paired to frequency for typical observing?
 ---make sure this is in the code
 
-TCAL is agnostic to CAL, because that is time-domain, rather than physical-domain 
+TCAL is agnostic to CAL, because that is time-domain, rather than physical-domain

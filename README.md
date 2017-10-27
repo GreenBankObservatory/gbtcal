@@ -46,16 +46,14 @@ We still aren't really sure what to call this. It would be called "Total Power" 
 
 To accommodate the various ways that this is done, new subclasses of `Attenuate` can be created. All `Attenuate` classes must implement an `attenuate` method to provide a common interface to `Calibrator`.
 
-
-#### Inter-Polarization Operations
-
-Right now this is literally just polarization averaging. However, it has been left discrete and generic to accommodate other possible polarization calibration operations. The idea here is that any sort of operations that require data from two different polarizations (within a feed) would be done in this stage.
-
-An `InterPolCalibrate` class must implement a `calibrate` method.
-
 #### Inter-Beam Operations
 
 All operations that require data from two different feeds/beams should be done here. We have only a couple that are currently implemented, but again this is very generic and all sorts of different things could be plugged in here.
 
 Most commonly this stage simply subtracts the reference data from the signal data.
 
+#### Inter-Polarization Operations
+
+Right now this is literally just polarization averaging. However, it has been left discrete and generic to accommodate other possible polarization calibration operations. The idea here is that any sort of operations that require data from two different polarizations (within a feed) would be done in this stage.
+
+An `InterPolCalibrate` class must implement a `calibrate` method.
