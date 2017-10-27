@@ -75,7 +75,7 @@ An `InterPolCalibrate` class must implement a `calibrate` method.
 
 ## Calibrator Stategy Classes
 
-As seen in this repo's UML, there is a class heirarchy of Calibrators, that can be extended for new receivers that need
+As seen in this repo's UML, there is a class hierarchy of Calibrators, that can be extended for new receivers that need
 their own way of calibrating DCR data.  Each of these classes will also used different classes for their converter, polarization and beam calibration phases.
 
 Here's brief overview of the classes:
@@ -86,7 +86,7 @@ This is the abstract base class that contains common methods almost all receiver
 
 ### TraditionalCalibrator
 
-Most of our receivers can calibrate their DCR data with this class (a child of Calibrator).  This calibrator will gather receiver calibration temperatures from the receiver calibration FITS file.  It will and these in an 'Antenna Temperature', or 'Total Power' equation by it's convert class CalDiodeConverter.
+Most of our receivers can calibrate their DCR data with this class (a child of Calibrator).  This calibrator will gather receiver calibration temperatures from the receiver calibration FITS file.  It will and these in an 'Antenna Temperature', or 'Total Power' equation by its convert class CalDiodeConverter.
 
 
 ### CalSeqCalibrator
@@ -99,15 +99,15 @@ Examples of children of this class are the WBandCalibrator class and ArgusCalibr
 
 This is the ugly duckling or black sheep of this group of classes, and is part of the reason why such a generic framework had to be constructed to cover all DCR calibration cases.
 
-The Ka receiver has only X polarization in it's first feed, and only Y in it's second.  In addition it's beam calibration step is completely different from the other classes.
+The Ka receiver has only X polarization in its first feed, and only Y in its second. In addition its beam calibration step is completely different from the other classes.
 
-TBF: this class is a work in progress.
+It is currently _somewhat_ hacked together, but this reveals a yet-to-be-resolved shortcoming of the pipeline structure rather than some intractable problem. Basically, instead of fully delegating each pipeline step to its respective class, a `Calibrator` instead has a method for each pipeline step that in turn calls the respective class. The respective class then has a very limited scope -- it is typically operating on only a single feed, or polarization, etc. Ka breaks this model, and so instead of having an `InterBeamOperator` subclass it simply does everything inside its `interBeamCalibrate` method. Not the worst thing in the world, but it could definitely be cleaned up.
 
 ## Table Driven Behavior
 
 Much of the behavior for determining how to calibrate a specific set of DCR data is determined by the receiver is used.  Instead of using conditionals to implement this receiver specific behavior, we use a table-driven approach.
 
-The file rcvrTable.csv contains this "receiver table", and is an enhanced comma-separated file used by rcvr_table.py to determine how
+The file `rcvrTable.csv` contains this "receiver table", and is an enhanced comma-separated file used by `rcvr_table.py` to determine how
 each receiver's DCR data should be calibrated.  For example, the "Cal Strategy" column contains the name of the calibrator class that each receiver should use.  Other useful columns are "Num Beams" and "Num Pols".
 
  This is similar to the wiki page:
