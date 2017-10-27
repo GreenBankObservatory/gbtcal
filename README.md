@@ -24,7 +24,21 @@ These tests compare `gbtcal` results to results from `sparrow`. The sparrow resu
 
 Run via `$ python gbtcal/test/regression_tests.py`
 
-TODO: Describe these further
+This is a simple module for comparing results computed by gbtcal
+with that originally computed by Sparrow (GFM).
+The Sparrow results live in files with descriptive filenames,
+such as <projectname>.<scannumber>.<receiver>.
+The home of the data that these Sparrow results were created from
+live in a separate file, organized by receiver, project path, and
+scan numbers.
+The basic flow of these tests is to:
+    * Find where all the DCR data lives in the archive by reading the
+      above mentioned file
+    * For each of these scans:
+       * Computing the various DCR Calibration results
+       * Compare these results to what are in the Sparrow files
+    * All results are printed to a report, including any problems
+      encountered, besides the obvious mismatching results
 
 ## Dataflow Overview
 
@@ -32,7 +46,7 @@ The dataflow can be broken down into two phases, decoding and calibration.
 
 ### Decoding
 
-This is the beginning of the pipeline. A scan is selected, along with a calibration option (e.g. Total Power) and a calibration option (e.g. 'XL'). The IF and DCR FITS files for the given scan are loaded and then merged together. The merging process is somewhat non-trivial because the DCR data is stored in the time-domain and must be mapped to the physical feed that took the data, the polarization of the data, and the calibration states under which the data was taken. The result is a single Astropy table, retaining the original FITS column names, that contains the mapped/decoded data.
+This is the beginning of the pipeline. A scan is selected, along with a calibration option (e.g. Total Power) and a polarization option (e.g. 'XL'). The IF and DCR FITS files for the given scan are loaded and then merged together. The merging process is somewhat non-trivial because the DCR data is stored in the time-domain and must be mapped to the physical feed that took the data, the polarization of the data, and the calibration (phase) states under which the data was taken. The result is a single Astropy table, retaining the original FITS column names, that contains the mapped/decoded data.
 
 ### Calibration
 
