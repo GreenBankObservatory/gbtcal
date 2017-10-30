@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import numpy
 import traceback
+import argparse
 from datetime import datetime
 from astropy.io import fits
 
@@ -45,7 +47,7 @@ def hasRedundantScanNums(projPath):
     return False
 
 
-def testAllResults():
+def testAllResults(projLimit=None, scanLimit=None):
     "Compare ALL the sparrow results to what this code repo produces"
 
     beginTime = datetime.now()
@@ -76,9 +78,6 @@ def testAllResults():
     dataSrcDctFn = "{}/rcvrDCRscans.txt".format(SCRIPTPATH)
     with open(dataSrcDctFn, 'r') as f:
         dataSrcDct = eval(f.read())
-
-    projLimit = 10
-    scanLimit = 1
 
     # we simply aren't supporting all receivers
     # Rcvr18_26: The K-band receiver has been retired and is
@@ -284,5 +283,25 @@ def reportResults(numChecked,
                 f.write("{}\n".format(v))
 
 
+def parseArgs():
+    
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--projLimit",
+                        help="Test just first 'projLimit' projects for all receivers")
+    parser.add_argument("--scanLimit",
+                        help="Test just first 'scanLimit' scans for all projects")
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    testAllResults()
+    args = parseArgs()
+    if args.projLimit is None and args.scanLimit is None:
+        print "You have choosen to run the full regression test suite."
+        print "This may take days.  Are you sure? (y/n)"
+        sure = raw_input()
+        if sure == "y":
+            print "OK, performing full regression test suite."
+        else:
+            print "You didn't type 'y', so we're bailing"
+            sys.exit(0)
+    testAllResults(int(args.projLimit), int(args.scanLimit))
