@@ -256,7 +256,6 @@ class DcrTable(StrippedTable):
     def _getCalData(self, calState):
         data = self.query(CAL=calState)['DATA']
         if len(data) != 1:
-            import ipdb; ipdb.set_trace()
             raise ValueError("Cannot unambiguously retrieve CAL state; "
                              "expected 1 row but got {}!".format(len(data)))
 

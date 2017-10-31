@@ -70,4 +70,3 @@ if __name__ == '__main__':
     table = ReceiverTable.load(os.path.join(SCRIPTPATH, 'rcvrTable.csv'))
     print(table)
     # table.printFull()
-    import ipdb; ipdb.set_trace()
