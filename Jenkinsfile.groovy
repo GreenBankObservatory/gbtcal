@@ -61,7 +61,7 @@ node {
     stage('test') {
         try {
             testPython()
-            junit '**/*.xml'
+            junit 'gbtcal/test/*.xml'
         } catch(error) {
             notify(failure, 'An error has occurred during the <b>test</b> stage.')
             throw(error)
