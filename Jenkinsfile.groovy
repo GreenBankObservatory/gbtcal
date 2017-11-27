@@ -36,8 +36,8 @@ def installPythonPackages() {
 
 def testPython() {
     sh """source ./${venv_name}/bin/activate
-    cd src
-    nosetests --nocapture test_calibrator.py"""
+    cd gbtcal/test
+    nosetests --with-xunit --nocapture test_calibrator.py"""
 }
 
 node {
@@ -61,6 +61,7 @@ node {
     stage('test') {
         try {
             testPython()
+            junit '**/*.xml'
         } catch(error) {
             notify(failure, 'An error has occurred during the <b>test</b> stage.')
             throw(error)
