@@ -66,5 +66,9 @@ node {
             notify(failure, 'An error has occurred during the <b>test</b> stage.')
             throw(error)
         }
-    }    
+    }
+
+    stage('notify') {
+        notify('success', 'gbtcal system built and tested successfully.')
+    }
 }    
