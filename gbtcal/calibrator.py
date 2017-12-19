@@ -29,7 +29,8 @@ class Calibrator(object):
     def __init__(self, table,
                  performConversion=False,
                  performInterPolOp=False,
-                 performInterBeamOp=False):
+                 performInterBeamOp=False,
+                 **kwargs):
         self.logger = logging.getLogger("{}.{}".format(__name__,
                                                        self.__class__.__name__))
         self.table = table.copy()
@@ -397,7 +398,6 @@ class KaCalibrator(TraditionalCalibrator):
         sigTcal = self.table.query(FEED=sigFeed)['FACTOR'][0]
         refTcal = self.table.query(FEED=refFeed)['FACTOR'][0]
 
-
         sigTa = self.getSigFeedTa(sigref=0, tcal=sigTcal)
         refTa = self.getSigFeedTa(sigref=1, tcal=refTcal)
 
@@ -431,6 +431,22 @@ class CalSeqCalibrator(Calibrator):
     interPolCalibrator = InterPolAverager()
     interBeamCalibrator = BeamSubtractor()
 
+    def __init__(self,
+                 dataTable,
+                 performConversion,
+                 performInterPolOp,
+                 performInterBeamOp,
+                 **kwargs):
+        # will we be using calseq scans to determine gains?
+        self.calseq = kwargs.get('calseq', True)
+        super(CalSeqCalibrator,
+              self).__init__(dataTable,
+                             performConversion,
+                             performInterPolOp,
+                             performInterBeamOp,
+                             **kwargs
+                             )
+
     def findCalFactors(self):
         table = self.table
         # This is defined in the subclasses
@@ -445,6 +461,13 @@ class CalSeqCalibrator(Calibrator):
             row['FACTOR'] = gains[index]
 
     def getGains(self):
+        if self.calseq:
+            return self._getGains()
+        else:
+            self.logger.info("Ignoring calseq scans; using gains of 1.0")
+            return None
+
+    def _getGains(self):
         raise NotImplementedError("getGains must be implemented by all "
                                   "CalSeqCalibrator subclasses")
 
@@ -475,7 +498,6 @@ class CalSeqCalibrator(Calibrator):
         or 0s if the proper amount of scans can't be found.
         """
         scans = self._getScanProcedures()
-
         procScanNums = [0] * count
 
         calSeqScans = [(scan, file) for (scan, proc, file) in scans
@@ -491,11 +513,12 @@ class CalSeqCalibrator(Calibrator):
 
 
 class WBandCalibrator(CalSeqCalibrator):
-    def getGains(self):
+    def _getGains(self):
         """
         For this scan, calculate the gains from previous calseq scan.
         This has format {"1X": 0.0, "2X": 0.0, "1Y": 0.0, "2Y": 0.0}
         """
+
         calSeqScanNumInfo = self._findMostRecentProcScans("CALSEQ")
 
         if len(calSeqScanNumInfo) > 0:
@@ -508,14 +531,13 @@ class WBandCalibrator(CalSeqCalibrator):
 
 class ArgusCalibrator(CalSeqCalibrator):
 
-    def getGains(self):
+    def _getGains(self):
         """
         For this scan, calculate the gains from most recent VaneCal
         scan pair.
         This has format {"10X": 0.0, "11X": 0.0, "10Y": 0.0, "11Y": 0.0}
         """
         calSeqNums = self._findMostRecentProcScans("VANECAL", count=2)
-
         if all(calSeqNums):
             cal = ArgusCalibration(
                 self.projPath, calSeqNums[0][1], calSeqNums[1][1]
