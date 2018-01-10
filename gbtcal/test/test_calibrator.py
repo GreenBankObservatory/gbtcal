@@ -135,3 +135,24 @@ class TestCalibrate(unittest.TestCase):
             ]
 
         )
+
+    def testRcvrArray75_115CalSeq(self):
+        "Simply makes sure that calseq keyword produces different result"
+        # testDataProjName = "AGBT17B_151_02:5:RcvrArray75_115"
+        testDataProjName = "AGBT17B_151_02"
+        projPath = "{}/data/{}".format(SCRIPTPATH,
+                                       testDataProjName)
+        calMode = "TotalPower"
+        polMode = "XL"
+        scanNum = 5
+
+        # first use the calseq scans for gains
+        actual = calibrate(projPath, scanNum, calMode, polMode,
+                           rcvrTablePath=rcvrTablePath)
+        self.assertAlmostEqual(0.83238223, actual[0], 5)
+
+        # now do the same, without using the calseq scans for gains
+        actual = calibrate(projPath, scanNum, calMode, polMode,
+                           rcvrTablePath=rcvrTablePath, calseq=False)
+        # what a difference!
+        self.assertEquals(663., actual[0])

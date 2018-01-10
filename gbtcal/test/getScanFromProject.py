@@ -31,13 +31,13 @@ def copyFiles(projPath, scan, receiver, scanName, destination="."):
     # except OSError:
     #     pass
 
-
-    print("Copying {} to {}".format(rcvrDir, newRcvrDir))
-    shutil.copytree(rcvrDir, newRcvrDir)
+    if not os.path.isdir(newRcvrDir):
+        print("Copying {} to {}".format(rcvrDir, newRcvrDir))
+        shutil.copytree(rcvrDir, newRcvrDir)
 
     print("Copying {} to {}".format(scanLogPath, newProjPath))
     shutil.copy(scanLogPath, newProjPath)
-    for manager in ["Antenna", "IF", "GO", "DCR"]:
+    for manager in ["Antenna", "IF", "GO", "DCR", receiver]:
         oldPath = os.path.join(projPath, manager, scanName)
         newPath = os.path.join(destination, project, manager, scanName)
 
