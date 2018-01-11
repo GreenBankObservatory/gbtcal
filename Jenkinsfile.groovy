@@ -53,7 +53,7 @@ node {
         try {
             installPythonPackages()
         } catch(error) {
-            notify(failure, 'An error has occurred during the <b>install</b> stage.')
+            notify('failure', 'An error has occurred during the <b>install</b> stage.')
             throw(error)
         }
     }
@@ -63,7 +63,7 @@ node {
             testPython()
             junit 'gbtcal/test/*.xml'
         } catch(error) {
-            notify(failure, 'An error has occurred during the <b>test</b> stage.')
+            notify('failure', 'An error has occurred during the <b>test</b> stage.')
             throw(error)
         }
     }
