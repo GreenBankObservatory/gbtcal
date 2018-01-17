@@ -2,6 +2,8 @@
 
 `gbtcal` is a GBT-specific calibration library for continuum data. It is intended for use with all receivers that take continuum data and use the GBT's IF system.
 
+See also: https://safe.nrao.edu/wiki/bin/view/GB/Software/DcrCalibrationDocs
+
 ## Setup
 
 Simply run `createEnv` to get your environment set up.
@@ -40,6 +42,23 @@ The basic flow of these tests is to:
       * Compare these results to what are in the Sparrow files
    * All results are printed to a report, including any problems
       encountered, besides the obvious mismatching results
+
+## Use as a Third Party Package
+
+If you simply want to use 'gbtcal' as a 3rd party package, here are the simple steps:
+
+   * source /home/gbtcal/release/release_gbtcal_env/bin/activate
+   * export PYTHONPATH=/home/gbtcal/release:$PYTHONPATH
+
+In your python code:
+
+   * from gbtcal.calibrate import calibrate
+   * data = calibrate(projpath, scan, calMode, polMode), where:
+      * projpath - the path to your project, ex: /home/gbtdata/AGBT16A_353_83
+      * scan - the number for the scan you want to calibrate
+      * calMode - the calibration mode, possibly one of 'Raw', 'TotalPower', 'DualBeam'.
+      * polMode - the polarization mode, possibly one of 'XL', 'YR', 'Avg'
+
 
 ## Dataflow Overview
 
