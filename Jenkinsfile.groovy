@@ -41,7 +41,7 @@ def testPython() {
 }
 
 node {
-    withEnv['PATH=/opt/local/bin:$PATH'] {
+    withEnv(['PATH=/opt/local/bin:$PATH']) {
         stage('cleanup') {
             deleteDir()
         }
