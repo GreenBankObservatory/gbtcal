@@ -27,11 +27,11 @@ def notify(status, details){
 venv_name = "testing-gbtcal-env"
 
 def installPythonPackages() {
-    sh '''export PATH=/opt/local/bin:$PATH
+    sh """
     virtualenv -p /opt/local/bin/python2.7 ${venv_name}
     source ${venv_name}/bin/activate
     pip install -U pip setuptools
-    pip install -r requirements.txt'''
+    pip install -r requirements.txt"""
 }
 
 def testPython() {
@@ -41,34 +41,36 @@ def testPython() {
 }
 
 node {
-    stage('cleanup') {
-        deleteDir()
-    }
-
-    stage('checkout') {
-        checkout scm
-    }
-
-    stage('install') {
-        try {
-            installPythonPackages()
-        } catch(error) {
-            notify('failure', 'An error has occurred during the <b>install</b> stage.')
-            throw(error)
+    withEnv['PATH=/opt/local/bin:$PATH'] {
+        stage('cleanup') {
+            deleteDir()
         }
-    }
-
-    stage('test') {
-        try {
-            testPython()
-            junit 'gbtcal/test/*.xml'
-        } catch(error) {
-            notify('failure', 'An error has occurred during the <b>test</b> stage.')
-            throw(error)
+    
+        stage('checkout') {
+            checkout scm
         }
-    }
-
-    stage('notify') {
-        notify('success', 'gbtcal system built and tested successfully.')
-    }
-}    
+    
+        stage('install') {
+            try {
+                installPythonPackages()
+            } catch(error) {
+                notify('failure', 'An error has occurred during the <b>install</b> stage.')
+                throw(error)
+            }
+        }
+    
+        stage('test') {
+            try {
+                testPython()
+                junit 'gbtcal/test/*.xml'
+            } catch(error) {
+                notify('failure', 'An error has occurred during the <b>test</b> stage.')
+                throw(error)
+            }
+        }
+    
+        stage('notify') {
+            notify('success', 'gbtcal system built and tested successfully.')
+        }
+    }    
+}
