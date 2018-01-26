@@ -41,36 +41,34 @@ def testPython() {
 }
 
 node {
-    withEnv(['PATH=/opt/local/bin:$PATH']) {
-        stage('cleanup') {
-            deleteDir()
-        }
-    
-        stage('checkout') {
-            checkout scm
-        }
-    
-        stage('install') {
-            try {
-                installPythonPackages()
-            } catch(error) {
-                notify('failure', 'An error has occurred during the <b>install</b> stage.')
-                throw(error)
-            }
-        }
-    
-        stage('test') {
-            try {
-                testPython()
-                junit 'gbtcal/test/*.xml'
-            } catch(error) {
-                notify('failure', 'An error has occurred during the <b>test</b> stage.')
-                throw(error)
-            }
-        }
-    
-        stage('notify') {
-            notify('success', 'gbtcal system built and tested successfully.')
-        }
-    }    
+   stage('cleanup') {
+       deleteDir()
+   }
+
+   stage('checkout') {
+       checkout scm
+   }
+
+   stage('install') {
+       try {
+           installPythonPackages()
+       } catch(error) {
+           notify('failure', 'An error has occurred during the <b>install</b> stage.')
+           throw(error)
+       }
+   }
+
+   stage('test') {
+       try {
+           testPython()
+           junit 'gbtcal/test/*.xml'
+       } catch(error) {
+           notify('failure', 'An error has occurred during the <b>test</b> stage.')
+           throw(error)
+       }
+   }
+
+   stage('notify') {
+       notify('success', 'gbtcal system built and tested successfully.')
+   }
 }
