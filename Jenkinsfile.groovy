@@ -27,11 +27,13 @@ def notify(status, details){
 venv_name = "testing-gbtcal-env"
 
 def installPythonPackages() {
-
-    sh """virtualenv -p /opt/local/bin/python2.7 ${venv_name}
+    sh """
+    export PATH=/opt/local/bin:$PATH
+    virtualenv -p /opt/local/bin/python2.7 ${venv_name}
     source ${venv_name}/bin/activate
     pip install -U pip setuptools
-    pip install -r requirements.txt"""
+    pip install -r requirements.txt
+    """
 }
 
 def testPython() {
