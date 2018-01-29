@@ -1,5 +1,5 @@
 def lastCommit() {
-    sh 'git log --format="%ae" | head -1 > commit-author.txt'                 
+    sh 'git log --format="%ae" | head -1 > commit-author.txt'
     lastAuthor = readFile('commit-author.txt').trim()
     sh 'rm commit-author.txt'
     return lastAuthor
@@ -26,18 +26,13 @@ def notify(status, details){
 // this build
 venv_name = "testing-gbtcal-env"
 
-def installPythonPackages() {
-    sh """
-    virtualenv -p /opt/local/bin/python2.7 ${venv_name}
-    source ${venv_name}/bin/activate
-    pip install -U pip setuptools
-    pip install -r requirements.txt"""
+def createPythonEnv() {
+    sh """./createEnv"""
 }
 
 def testPython() {
     sh """source ./${venv_name}/bin/activate
-    cd gbtcal/test
-    nosetests --with-xunit --nocapture test_calibrator.py"""
+    nosetests --with-xunit"""
 }
 
 node {
@@ -51,7 +46,7 @@ node {
 
    stage('install') {
        try {
-           installPythonPackages()
+           createPythonEnv()
        } catch(error) {
            notify('failure', 'An error has occurred during the <b>install</b> stage.')
            throw(error)
