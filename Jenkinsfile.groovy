@@ -27,7 +27,7 @@ def notify(status, details){
 venv_name = "testing-gbtcal-env"
 
 def createPythonEnv() {
-    sh """./createEnv"""
+    sh """./createEnv testing-gbtcal-env"""
 }
 
 def testPython() {
