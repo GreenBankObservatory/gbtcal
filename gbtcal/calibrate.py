@@ -4,6 +4,7 @@ from __future__ import print_function
 import argparse
 import logging
 import os
+import sys
 
 import numpy
 
@@ -121,6 +122,14 @@ def calibrate(projPath, scanNum, calMode, polMode,
 
 def parseArgs():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("-V", "--version", action="store_true")
+    args = parser.parse_args()
+    if args.version:
+        from gbtcal import __version__
+        print(__version__)
+        sys.exit(0)
+
     parser.add_argument("projpath",
                         help="The project directory where fits data is "
                              "stored (e.g. /home/gbtdata/TGBT15A_901).")
@@ -148,6 +157,10 @@ def parseArgs():
                              "Note that this uses numpy.savetxt, and will "
                              "result in a file in which each index is saved "
                              "to its own line")
+
+
+
+
     return parser.parse_args()
 
 
