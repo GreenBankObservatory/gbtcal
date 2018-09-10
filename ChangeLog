@@ -1,0 +1,158 @@
+CHANGES
+=======
+
+1.2.0
+-----
+
+* Can now check version
+* Now specifying python 2.7 explicitly
+* First pass at packaging and jenkins testing thereof
+* Updated Jenkinsfile for declarative pipeline
+* Updated expected location of junit output files
+* Updated Jenkinsfile to name its env correctly
+* Updated Jenkinsfile to reflect real-world testing
+* Testing environment fix
+* Better way of doing environment
+* Better way of doing environment
+* Fixing quotes
+* Fixing typo in Jenkinsfile
+* Adding /opt/local/bin to PATH where needed to run virtualenv
+* enhanced README.md
+* Updated W-band unit test exp values to match GFM
+* Fixed syntax error in Jenkinsfile
+
+1.1.0
+-----
+
+* Added new test/data/AGBT17B\_151\_02
+* new unit test checks if new calseq keyword works or not
+* Changes to getScanFromProject to support more then one scan
+* Added top level calseq keyword
+* Notifies on success
+* Correct paths for XML reports
+* Updated Jenkinsfile with correct paths
+* Added missing functions to Jenkinsfile
+
+1.0.0
+-----
+
+* Fixed bug in constants.py
+* Removed ipdb statements
+* Added projLimit & scanLimit options to CLI for regression\_tests
+* Update Ka section of readme
+* Updated gbtcal viso doc
+* Finally fixed Ka unit tests
+* Makeing sure that regression\_tests take Raw Avg into account
+* Added more of my 2 cents to README.md
+* fixed some typos and added comments about regressions in README
+* Stripped requirements.txt of non-top-level dependencies
+* Updated calibration entry point
+* Updated .gitattributes; added pdf version of gbtcal
+* Renamed a bunch of stuff. Created gbtcal.vsdx
+* Now removing whitespace on save
+* Added more comments, docstrings, etc. Refactored a bit for clarity
+* Removed README.rst; not needed
+* Changed pipeline order to atten -> ibc -> ipc
+* Minor bug fixes to Calibrator
+* added comments to regression\_tests.py
+* Created README
+* polarization now being passed to InterBeamCalibrate
+* Converted all relevant print statements to logger calls
+* Removed OOF code remnants
+* Calibrators now define their atten/ipc/ibc as class attributes directly
+* First pass at removing OOF knowledge from gbtcal
+* Now again validating cal opts. Pol opts are all correct now
+* Updated logging configuration to be more DRY
+* Some more restructuring of the project directories
+* First pass at a major restructuring of the repo
+* Minor reorganization to classes/methods/loggers
+* Everything is now working. A lot of cleanup left to do
+* KFPA is now working
+* BROKEN: GFM-style cal now working again, but things still hardcoded
+* OOF now working, but everything else broke
+* BROKEN: working on integrating OOF capabilities for Q band
+* Argus is now working
+* W Band now working
+* Updated README to test git push hook
+* Added template to README.rst
+* Added README
+* fixed bug in Jenkinsfile
+* Including tests in Jenkinsfile
+* test commit
+* test commit
+* new test commit
+* test commit
+* test commit
+* Enhanced Jenkinsfile to install virtualenv
+* First pass at Jenkinsfile
+* test commit
+* 4/7 receivers now passing all tests
+* LBand works..
+* Partway through the creation of Algorithm heirarchy
+* Removed test code from dcr\_table.py. No impact on performance, unfortunately
+* added new calibrateOOF function
+* First pass at regression tests: regression\_tests.py
+* Fixed bug in CalSeqCalibrator.findMostRecentProcScans
+* Fixed bug in doCalibrate so that a single pol rx works
+* Added PF1 and PF2 rcvrs, and fixed bug with Q-band rcvr in rcvrTable.csv
+* first pass at visio doc for this repo
+* Implemented BeamSwitchedTBOnly for Ka Band
+* Added columns to receiver table
+* KaCalibrator now handles Raw data correctly
+* updated Ka calibrator test to do Raw and TotalPower
+* Updated correct sparrow results for Ka Rcvr26\_40
+* Enhanced unit testRcvr68\_92
+* Reinserted W-band unit tests
+* Completed and cleaned up the high level entry point code
+* Forgot to add constants.py :'(
+* Updated unit tests; refactored some things
+* Created calibrateDcrData.py for high level entry point stuff
+* first pass at highest level function for calibrating DCR data
+* Unit tests call 'decode' function now. Created calibrateDcrData.py file
+* Removed some unnecessary array nesting
+* Unit tests now passing for most receivers
+* Sparrow results file for KaCalibrator unit tests
+* Added KaCalibrator with new unit tests
+* Applied pep8 stuff to thing
+* Removed some unnecessary functions and stuff
+* First pass at sensible unit tests for each receiver
+* Did a little bit of cleanup of print statements and such
+* Got all combinations being tested for W-band and Rcvr1\_2
+* Changed dcr\_decode\_astropy to dcr\_decode
+* Created dcr\_decode\_astropy.decode() to handle decoding more cleanly
+* Refactored dcr\_decode\_astropy to remove dead code
+* Removed use of eval(); replaced with ast.literal\_eval
+* Created ProjectFinder
+* Got W-band calibration working! And it matches directly comparable results
+* implemented successfully BeamSwitchedTBOnly for Ka data
+* Got Argus Calibration to run through completely. W-band Calibration still fails
+* Small changes to code, ready to be merged
+* Implemented code for calibration of Argus and W-band using Calibrator class Heirarchy
+* Refactored some code, moved stuff around, added some data files
+* Re-organized project structure and refactored getDcrDataMap to use DcrTable
+* Finished standard doMath for DualBeam and TotalPower
+* First pass at 'traditional' calibration using new framework
+* dcr\_calibrate now properly calibrates W band by finding CalSeq scan
+* First pass at calibrating W-band data!
+* dcr\_decode\_astropy does not get tcals for w band and argus
+* Introduced and modified sparrow classes to calc W gains
+* Bookkeeping. Added .gitignore and sublime project
+* POC for a table-driven algorithm selection mechanism
+* now we are testing against Ka band data too
+* got raw & total power modes working with Rcvr26\_40
+* First pass at updating Paul's 'dictionary method' to use the Astropy Table instead. Very messy..
+* Improved test\_dcr\_calibrate
+* solved bug where correct freq is choosen when getting data for cal
+* Solved bug by introducing getDcrDescriptors
+* Fixed bugs with feeds & trackBeam, as well as Ka special handling
+* getDataMap needs to handle Ka special case
+* test\_dcr\_calibrate.py checks sparrow results against dcr\_calibrate
+* getDataMap now also returns the tracking beam
+* dcr\_calibrate now does dual beam calibration correctly
+* new dcr\_calibrate.py demonstrates one way of doing calibration
+* dcr\_decode\_astropy getDataMap now includes tCal info
+* now dcr\_decode\_astropy presents data map just like GFM cont. does
+* updated dcr\_dcode\_astropy to calibrate dcr data better
+* Fixed bug in dcr\_decode\_astropy.getTcal
+* dcr\_decode\_astrid avoids 2 types of failures
+* First pass at a standalone repo for dcr decoding

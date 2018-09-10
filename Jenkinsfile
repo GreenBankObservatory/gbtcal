@@ -1,5 +1,3 @@
-// This is the name given to the virtual environment for
-// this build
 def venv_name = "testing-gbtcal-env"
 
 pipeline {
@@ -16,26 +14,45 @@ pipeline {
       }
     }
 
-    stage('install') {
+    stage('virtualenv') {
       steps {
-        sh """./createEnv "${venv_name}" """
+        sh """./createEnv ${venv_name}"""
       }
     }
 
     stage('test') {
       steps {
         sh """
-          source ./${venv_name}/bin/activate
+          source ${venv_name}/bin/activate
           nosetests --with-xunit
         """
         junit '*.xml'
       }
     }
+
+    stage('package') {
+      steps {
+        sh """
+          source ${venv_name}/bin/activate
+          pip install wheel
+          python setup.py sdist
+          python setup.py bdist_wheel
+        """
+      }
+    }
   }
 
   post {
-    always {
-      do_notify()
+    regression {
+        script { env.CHANGED = true }
+    }
+
+    fixed {
+        script { env.CHANGED = true }
+    }
+
+    cleanup {
+        do_notify()
     }
   }
 }
