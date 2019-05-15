@@ -9,14 +9,14 @@ from astropy.table import Column
 from astropy.io import fits
 import numpy
 
-from constants import POLOPTS
+from .constants import POLOPTS
 from gbtcal.decode import getFitsForScan, getTcal, getRcvrCalTable
 from table.querytable import QueryTable, copyTable
 from gbtcal.converter import CalDiodeConverter, CalSeqConverter
 from gbtcal.interpolops import InterPolAverager
 from gbtcal.interbeamops import BeamSubtractor
-from WBandCalibration import WBandCalibration
-from ArgusCalibration import ArgusCalibration
+from .WBandCalibration import WBandCalibration
+from .ArgusCalibration import ArgusCalibration
 
 
 logger = logging.getLogger(__name__)

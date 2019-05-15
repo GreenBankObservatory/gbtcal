@@ -26,7 +26,7 @@ import os
 from astropy.io import fits
 import numpy
 
-from CalSeqScan import CalSeqScan
+from .CalSeqScan import CalSeqScan
 
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ class WBandCalibration:
         # Try to complete the set
         if len(self.scans) != len(self.scannums):
             for scannum in self.scannums:
-                if scannum not in self.scans.keys():
+                if scannum not in list(self.scans.keys()):
                     scanProcseqn = self.scannums.index(scannum) + 1
                     self.addScan(scannum, project, scanProcseqn, procsize)
 
@@ -126,7 +126,7 @@ class WBandCalibration:
         """Determine which scans are part of this calibration"""
         firstscan = scannum - procseqn + 1
         lastscan = firstscan + procsize - 1
-        return range(firstscan, lastscan + 1)
+        return list(range(firstscan, lastscan + 1))
 
     def addScan(self, scannum, project, seqn, size):
         """Adds CalSeqScan to self.scans for given scan number"""
@@ -168,7 +168,7 @@ class WBandCalibration:
         scanData = {}
         calSeqData = {}
 
-        for scannum in self.scans.iterkeys():
+        for scannum in self.scans.keys():
             logger.debug("getCAlSeqData for scannum: %s", scannum)
 
             calSeqScan = self.scans[scannum]
@@ -207,7 +207,7 @@ class WBandCalibration:
         """
         calSeqData = self.getCalSeqData()
 
-        for channel in calSeqData.keys():
+        for channel in list(calSeqData.keys()):
             channelData = {}
             for data in calSeqData[channel]:
                 channelData[data[0]] = data[1]

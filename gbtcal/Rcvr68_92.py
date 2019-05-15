@@ -86,7 +86,7 @@ class Rcvr68_92:
             pHeader = self.fitsData[0].header
 
             # if pHeader.has_key('fitsver'):
-            keys = [k.lower() for k in pHeader.keys()]
+            keys = [k.lower() for k in list(pHeader.keys())]
             if 'fitsver' in keys:
                 self.fitsver = pHeader['fitsver']
             elif self.debug:

@@ -1,7 +1,7 @@
 from astropy.table import Column
 import numpy
 
-from querytable import QueryTable
+from .querytable import QueryTable
 
 class StrippedTable(QueryTable):
     """An implementation of Table that strips all right padding from

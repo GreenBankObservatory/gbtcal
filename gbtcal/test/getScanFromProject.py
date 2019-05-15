@@ -32,10 +32,10 @@ def copyFiles(projPath, scan, receiver, scanName, destination="."):
     #     pass
 
     if not os.path.isdir(newRcvrDir):
-        print("Copying {} to {}".format(rcvrDir, newRcvrDir))
+        print(("Copying {} to {}".format(rcvrDir, newRcvrDir)))
         shutil.copytree(rcvrDir, newRcvrDir)
 
-    print("Copying {} to {}".format(scanLogPath, newProjPath))
+    print(("Copying {} to {}".format(scanLogPath, newProjPath)))
     shutil.copy(scanLogPath, newProjPath)
     for manager in ["Antenna", "IF", "GO", "DCR", receiver]:
         oldPath = os.path.join(projPath, manager, scanName)
@@ -48,7 +48,7 @@ def copyFiles(projPath, scan, receiver, scanName, destination="."):
         with open(os.path.join(destination, project, "README"), 'w+') as f:
             f.write("Data for scan {}\n".format(scan))
 
-        print("Copying {} to {}".format(oldPath, newPath))
+        print(("Copying {} to {}".format(oldPath, newPath)))
         shutil.copy(oldPath, newPath)
 
 
