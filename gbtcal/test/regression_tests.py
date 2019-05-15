@@ -39,8 +39,8 @@ def hasRedundantScanNums(projPath):
     prevScan = scanNums[0]
     for scanNum in scanNums:
         if scanNum - prevScan < 0:
-            print("WARNING: Possibly redundant scan! Scan {} comes "
-                  "after {} in {}".format(projPath, scanNum, prevScan))
+            print(("WARNING: Possibly redundant scan! Scan {} comes "
+                  "after {} in {}".format(projPath, scanNum, prevScan)))
             return True
         prevScan = scanNum
 
@@ -84,12 +84,12 @@ def testAllResults(projLimit=None, scanLimit=None):
     # too different from the others to be worth the effort
     skipReceivers = ['Rcvr18_26']
 
-    numReceivers = len(dataSrcDct.keys())
+    numReceivers = len(list(dataSrcDct.keys()))
     nRcvr = 0
 
-    for receiver, projInfos in dataSrcDct.items():
+    for receiver, projInfos in list(dataSrcDct.items()):
         nRcvr += 1
-        print("receiver {}, {} of {}".format(receiver, nRcvr, numReceivers))
+        print(("receiver {}, {} of {}".format(receiver, nRcvr, numReceivers)))
         if receiver in skipReceivers:
             continue
 
@@ -108,14 +108,14 @@ def testAllResults(projLimit=None, scanLimit=None):
             else projInfosFlat[:projLimit]
 
         for pi, projInfo in enumerate(projInfos):
-            print("project {} of {}".format(pi, len(projInfos)))
+            print(("project {} of {}".format(pi, len(projInfos))))
             print(projInfo)
 
             try:
                 projName, projParentPath, testScans = projInfo
             except ValueError as e:
                 # print(traceback.format_exc(e))
-                print("Invalid projInfo: {}".format(projInfo))
+                print(("Invalid projInfo: {}".format(projInfo)))
                 dataProblems[INVALIDPROJ].append(projInfo)
                 continue
 
@@ -139,8 +139,8 @@ def testAllResults(projLimit=None, scanLimit=None):
                         resultsDict = eval(f.read())
                 except IOError as e:
                     print(e)
-                    print("Could not find sparrow results file {}"
-                          .format(sparrow_results_file))
+                    print(("Could not find sparrow results file {}"
+                          .format(sparrow_results_file)))
                     dataProblems[MISSING].append(sparrow_results_file)
                     break
                 except:
@@ -148,10 +148,10 @@ def testAllResults(projLimit=None, scanLimit=None):
                     dataProblems[MALFORMED].append(sparrow_results_file)
                     break
 
-                print("projPath: {}\n"
+                print(("projPath: {}\n"
                       "receiver: {}\n"
                       "scanNum: {}"
-                      .format(projPath, receiver, scanNum))
+                      .format(projPath, receiver, scanNum)))
 
                 # any results to check against?
                 if resultsDict == {}:
@@ -162,7 +162,7 @@ def testAllResults(projLimit=None, scanLimit=None):
                 # if this project has redundant scan numbers, we can't
                 # trust the results
                 if hasRedundantScanNums(projPath):
-                    print("WARNING: skipping this scan: ", projPath, scanNum)
+                    print(("WARNING: skipping this scan: ", projPath, scanNum))
                     dataProblems[REDUNDANT].append(projPath)
                     break
 
@@ -206,7 +206,7 @@ def compare(projPath, scanNum, resultsDict, receiver):
     #     return False, "Redundant Scans"
 
     # only check against the keys that exist in both:
-    for spKey, expected in resultsDict.items():
+    for spKey, expected in list(resultsDict.items()):
         spCalMode, spPolMode = spKey
 
         # sparrow does some funky things for some receivers, that we
@@ -223,7 +223,7 @@ def compare(projPath, scanNum, resultsDict, receiver):
         try:
             actual = calibrate(projPath, scanNum, spCalMode, spPolMode)
         except:
-            print("Something went wrong", traceback.format_exc())
+            print(("Something went wrong", traceback.format_exc()))
             return False, "Exception"
 
         # The sparrow results for (Raw, Avg) are still ints,
@@ -234,10 +234,10 @@ def compare(projPath, scanNum, resultsDict, receiver):
         if not numpy.allclose(actual, expected):
             al = arraySummary(actual),
             el = arraySummary(expected),
-            print("Test for {} failed: {} != {}".format(spKey, al, el))
+            print(("Test for {} failed: {} != {}".format(spKey, al, el)))
             return False, "Mismatched"
 
-    print(projPath, scanNum, "Results MATCH!")
+    print((projPath, scanNum, "Results MATCH!"))
     return True, None
 
 
@@ -257,7 +257,7 @@ def reportResults(numChecked,
 
     numMismatched = len(nonMatchingResults)
     numPassed = numCompared - numMismatched
-    numProblems = sum([len(v) for k, v in dataProblems.items()])
+    numProblems = sum([len(v) for k, v in list(dataProblems.items())])
 
     prcPassed = 100. * (numPassed / float(numCompared))
     prcCompared = 100. * (numCompared / float(numChecked))
@@ -277,7 +277,7 @@ def reportResults(numChecked,
             print(n)
             f.write("{}\n".format(n))
         f.write("*** Data Problems:\n")
-        for k, vs in dataProblems.items():
+        for k, vs in list(dataProblems.items()):
             f.write("* Type: {}\n".format(k))
             for v in vs:
                 f.write("{}\n".format(v))
@@ -296,12 +296,12 @@ def parseArgs():
 if __name__ == '__main__':
     args = parseArgs()
     if args.projLimit is None and args.scanLimit is None:
-        print "You have choosen to run the full regression test suite."
-        print "This may take days.  Are you sure? (y/n)"
-        sure = raw_input()
+        print("You have choosen to run the full regression test suite.")
+        print("This may take days.  Are you sure? (y/n)")
+        sure = input()
         if sure == "y":
-            print "OK, performing full regression test suite."
+            print("OK, performing full regression test suite.")
         else:
-            print "You didn't type 'y', so we're bailing"
+            print("You didn't type 'y', so we're bailing")
             sys.exit(0)
     testAllResults(int(args.projLimit), int(args.scanLimit))

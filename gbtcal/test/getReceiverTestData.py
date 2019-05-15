@@ -4,7 +4,7 @@
 import argparse
 
 from projfinder.projFinder import ProjectFinder
-from getScanFromProject import getScanFromProject, copyFiles
+from .getScanFromProject import getScanFromProject, copyFiles
 
 
 """docstring"""
@@ -40,7 +40,7 @@ def main(destination='.'):
             copyFiles(projectPath, scanNum, receiver, scanName,
                       destination=destination)
         else:
-            print("No project found for {}".format(managersToSearchFor))
+            print(("No project found for {}".format(managersToSearchFor)))
             # projectPath = None
             # scanNum = None
             # scanName = None

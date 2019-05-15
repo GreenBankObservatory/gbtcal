@@ -1,6 +1,6 @@
 """Entry point to calibration pipeline"""
 
-from __future__ import print_function
+
 import argparse
 import logging
 import os

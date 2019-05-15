@@ -172,7 +172,7 @@ def getRcvrCalTable(rcvrCalHduList):
                 tmpTable.add_column(column)
 
             # Delete all the meta data; we don't need it
-            for key in tmpTable.meta:
+            for key in list(tmpTable.meta):
                 del tmpTable.meta[key]
 
             # Stack the table on top of the new one

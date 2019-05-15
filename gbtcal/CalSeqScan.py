@@ -23,9 +23,12 @@
 import logging
 
 import numpy
-from ConfigParser import ConfigParser
+try:
+    from configparser import ConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser
 
-from Rcvr68_92 import Rcvr68_92
+from .Rcvr68_92 import Rcvr68_92
 from gbtcal.decode import getFitsForScan, getDcrDataDescriptors
 from gbtcal.dcrtable import DcrTable
 
@@ -85,7 +88,7 @@ class CalSeqScan:
 
         self.fitsMap = getFitsForScan(projectPath, scanNum)
 
-        logger.debug("fits files %s", self.fitsMap.keys())
+        logger.debug("fits files %s", list(self.fitsMap.keys()))
         self.channels = []
         self.ports = []  # need ordered list to correspond with data columns
         self.SetBackend()
@@ -192,7 +195,7 @@ class CalSeqScan:
                                 except KeyError:
                                     # start a list for this dataType
                                     autoData[dataType] = [channelData[idx]]
-                        for datatype in autoData.keys():
+                        for datatype in list(autoData.keys()):
                             try:
                                 self.scanData[channel].append(
                                     (datatype, numpy.array(autoData[datatype]))
@@ -246,7 +249,7 @@ class CalSeqScan:
                                         )
                                     except KeyError:
                                         autoData[dataType] = newData
-                        for datatype in autoData.keys():
+                        for datatype in list(autoData.keys()):
                             try:
                                 self.scanData[channel].append(
                                     (datatype, autoData[datatype])

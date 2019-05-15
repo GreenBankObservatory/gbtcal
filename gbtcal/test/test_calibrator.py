@@ -55,8 +55,8 @@ class TestCalibrate(unittest.TestCase):
             if option in expectedResults:
                 del expectedResults[option]
         logger.info("Preparing to execute the following tests: %s",
-                    expectedResults.keys())
-        for calOption, result in expectedResults.items():
+                    list(expectedResults.keys()))
+        for calOption, result in list(expectedResults.items()):
             # NOTE: Uncomment this to run only a specific type of test
             # if calOption != ('BeamSwitchedTBOnly', 'YR'):
             #     continue
@@ -155,4 +155,4 @@ class TestCalibrate(unittest.TestCase):
         actual = calibrate(projPath, scanNum, calMode, polMode,
                            rcvrTablePath=rcvrTablePath, calseq=False)
         # what a difference!
-        self.assertEquals(663., actual[0])
+        self.assertEqual(663., actual[0])

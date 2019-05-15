@@ -1,12 +1,15 @@
 CHANGES
 =======
 
+1.3.0
+-----
+
+* Now compatible with Python 2 and 3
+
 1.2.0
 -----
 
-* Can now check version
-* Now specifying python 2.7 explicitly
-* First pass at packaging and jenkins testing thereof
+* Now operates as a proper package
 * Updated Jenkinsfile for declarative pipeline
 * Updated expected location of junit output files
 * Updated Jenkinsfile to name its env correctly
