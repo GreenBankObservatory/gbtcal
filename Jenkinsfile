@@ -1,7 +1,16 @@
+#!/usr/bin/env groovy
+
 def venv_name = "testing-gbtcal-env"
 
 pipeline {
-  agent any
+  agent {
+    label 'rhel7'
+  }
+
+  triggers {
+    // trigger a weekly build on the master branch
+    cron(env.BRANCH_NAME == 'master' ? '@weekly' : '')
+  }
 
   stages {
     stage('init') {
